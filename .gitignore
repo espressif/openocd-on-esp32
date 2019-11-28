@@ -1,0 +1,5 @@
+app/build
+app/sdkconfig
+app/sdkconfig.old
+.vscode
+*.code-workspace
