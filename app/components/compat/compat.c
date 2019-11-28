@@ -3,8 +3,9 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <signal.h>
+#include <pwd.h>
 
-       
 int chdir(const char* path)
 {
     errno = ENOSYS;
@@ -24,4 +25,32 @@ mode_t umask(mode_t mask)
     mode_t ret = old_mask;
     old_mask = mask;
     return ret;
+}
+
+pid_t tcgetpgrp(int fd)
+{
+    errno = ENOTTY;
+    return -1;
+}
+
+sighandler_t signal(int signum, sighandler_t handler)
+{
+    errno = ENOSYS;
+    return SIG_ERR;
+}
+
+int dup(int oldfd)
+{
+    errno = ENOSYS;
+    return -1;
+}
+
+uid_t getuid(void)
+{
+    return 0;
+}
+
+struct passwd *getpwuid(uid_t uid)
+{
+    return NULL;
 }

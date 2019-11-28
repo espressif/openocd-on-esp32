@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include "esp_log.h"
-#include "jim.h"
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_vfs_dev.h"
 #include "driver/uart.h"
+#include "esp_spiffs.h"
 
+#include "jim.h"
+#include "openocd.h"
 
 static void initialize_console(void)
 {
@@ -65,10 +67,8 @@ static void JimSetArgv(Jim_Interp *interp, int argc, char *const argv[])
     Jim_SetVariableStr(interp, "argc", Jim_NewIntObj(interp, argc));
 }
 
-void app_main(void)
+void run_jimsh(void)
 {
-    initialize_console();
-    ESP_LOGI(TAG, "Setting up...");
     int retcode;
     Jim_Interp *interp;
     /* Create and initialize the interpreter */
@@ -102,6 +102,65 @@ void app_main(void)
     }
     Jim_FreeInterp(interp);
     ESP_LOGI(TAG, "jimtcl has finished, exit code %d", retcode);
+}
+
+void mount_storage(void)
+{
+    ESP_LOGI(TAG, "Initializing SPIFFS");
+
+    esp_vfs_spiffs_conf_t conf = {
+      .base_path = "/data",
+      .partition_label = NULL,
+      .max_files = 5,
+      .format_if_mount_failed = false
+    };
+
+    // Use settings defined above to initialize and mount SPIFFS filesystem.
+    // Note: esp_vfs_spiffs_register is an all-in-one convenience function.
+    esp_err_t ret = esp_vfs_spiffs_register(&conf);
+
+    if (ret != ESP_OK) {
+        if (ret == ESP_FAIL) {
+            ESP_LOGE(TAG, "Failed to mount or format filesystem");
+        } else if (ret == ESP_ERR_NOT_FOUND) {
+            ESP_LOGE(TAG, "Failed to find SPIFFS partition");
+        } else {
+            ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
+        }
+        return;
+    }
+
+    size_t total = 0, used = 0;
+    ret = esp_spiffs_info(NULL, &total, &used);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret));
+    } else {
+        ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
+    }
+}
+
+void run_openocd(void)
+{
+    setenv("OPENOCD_SCRIPTS", "/data", 1);
+    const char* argv[] = {
+        "openocd",
+        "-f", "/data/target/esp32.cfg"
+    };
+    int argc = sizeof(argv)/sizeof(argv[0]);
+    int ret = openocd_main(argc, (char**) argv);
+    ESP_LOGI(TAG, "opencod has finished, exit code %d", ret);
+}
+
+void app_main(void)
+{
+    initialize_console();
+    mount_storage();
+    ESP_LOGI(TAG, "Setting up...");
+    
+    // run_jimsh();
+
+    run_openocd();
+
     vTaskDelay(1000/portTICK_PERIOD_MS);
     esp_restart();
 }
