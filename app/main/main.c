@@ -144,7 +144,8 @@ void run_openocd(void)
     setenv("OPENOCD_SCRIPTS", "/data", 1);
     const char* argv[] = {
         "openocd",
-        "-f", "/data/target/esp32.cfg"
+        "-f", "interface/esp32_gpio.cfg",
+        "-f", "target/esp32.cfg"
     };
     int argc = sizeof(argv)/sizeof(argv[0]);
     int ret = openocd_main(argc, (char**) argv);

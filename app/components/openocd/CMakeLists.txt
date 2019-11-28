@@ -13,7 +13,7 @@ string(REPLACE "-gcc" "" host_prefix "${gcc_name}")
 set(configure_opts "--host=${host_prefix}"
     "--disable-internal-libjaylink"
     "--disable-internal-jimtcl"
-    "--disable-dummy"
+    "--enable-dummy"
     "--disable-ftdi"
     "--disable-stlink"
     "--disable-ti-icdi"
