@@ -35,6 +35,9 @@ pid_t tcgetpgrp(int fd)
 
 sighandler_t signal(int signum, sighandler_t handler)
 {
+    if (handler == SIG_IGN) {
+        return SIG_IGN;
+    }
     errno = ENOSYS;
     return SIG_ERR;
 }
