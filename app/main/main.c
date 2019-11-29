@@ -102,7 +102,7 @@ void run_openocd(void)
     };
     int argc = sizeof(argv)/sizeof(argv[0]);
     int ret = openocd_main(argc, (char**) argv);
-    ESP_LOGI(TAG, "opencod has finished, exit code %d", ret);
+    ESP_LOGI(TAG, "openocd has finished, exit code %d", ret);
 }
 
 void app_main(void)
