@@ -67,7 +67,7 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     set_target_properties(openocd_imp PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
         ${COMPONENT_DIR}/openocd/src)
 
-     target_link_libraries(openocd_imp INTERFACE idf::newlib idf::compat idf::lwip idf::vfs)
+     target_link_libraries(openocd_imp INTERFACE idf::newlib idf::compat idf::lwip idf::vfs idf::jimtcl)
 
     target_link_libraries(${COMPONENT_TARGET} INTERFACE openocd_imp)
 endif()

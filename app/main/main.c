@@ -1,13 +1,17 @@
 #include <stdio.h>
 #include "esp_log.h"
 #include "esp_system.h"
-#include "esp_log.h"
+#include "esp_event.h"
+#include "esp_netif.h"
+#include "esp_spiffs.h"
+#include "nvs_flash.h"
 #include "esp_vfs_dev.h"
 #include "driver/uart.h"
-#include "esp_spiffs.h"
+#include "protocol_examples_common.h"
 
-#include "jim.h"
 #include "openocd.h"
+
+static const char *TAG = "main";
 
 static void initialize_console(void)
 {
@@ -39,69 +43,6 @@ static void initialize_console(void)
 
     /* Tell VFS to use UART driver */
     esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
-}
-
-static const char *TAG = "main";
-
-static void JimPrintErrorMessage(Jim_Interp *interp)
-{
-    Jim_MakeErrorMessage(interp);
-    fprintf(stderr, "%s\n", Jim_String(Jim_GetResult(interp)));
-}
-
-extern int Jim_initjimshInit(Jim_Interp *interp);
-
-static void JimSetArgv(Jim_Interp *interp, int argc, char *const argv[])
-{
-    int n;
-    Jim_Obj *listObj = Jim_NewListObj(interp, NULL, 0);
-
-
-    for (n = 0; n < argc; n++) {
-        Jim_Obj *obj = Jim_NewStringObj(interp, argv[n], -1);
-
-        Jim_ListAppendElement(interp, listObj, obj);
-    }
-
-    Jim_SetVariableStr(interp, "argv", listObj);
-    Jim_SetVariableStr(interp, "argc", Jim_NewIntObj(interp, argc));
-}
-
-void run_jimsh(void)
-{
-    int retcode;
-    Jim_Interp *interp;
-    /* Create and initialize the interpreter */
-    interp = Jim_CreateInterp();
-    Jim_RegisterCoreCommands(interp);
-
-    /* Register static extensions */
-    if (Jim_InitStaticExtensions(interp) != JIM_OK) {
-        JimPrintErrorMessage(interp);
-    }
-
-    Jim_SetVariableStrWithStr(interp, "jim::argv0", "jimsh");
-    Jim_SetVariableStrWithStr(interp, JIM_INTERACTIVE, "1");
-    retcode = Jim_initjimshInit(interp);
-
-    if (retcode == JIM_ERR) {
-        JimPrintErrorMessage(interp);
-    }
-    if (retcode != JIM_EXIT) {
-        JimSetArgv(interp, 0, NULL);
-        retcode = Jim_InteractivePrompt(interp);
-    }
-    if (retcode == JIM_EXIT) {
-        retcode = Jim_GetExitCode(interp);
-    }
-    else if (retcode == JIM_ERR) {
-        retcode = 1;
-    }
-    else {
-        retcode = 0;
-    }
-    Jim_FreeInterp(interp);
-    ESP_LOGI(TAG, "jimtcl has finished, exit code %d", retcode);
 }
 
 void mount_storage(void)
@@ -139,13 +80,25 @@ void mount_storage(void)
     }
 }
 
+void initialize_wifi(void)
+{
+    ESP_LOGI(TAG, "Initializing Wi-Fi");
+    ESP_ERROR_CHECK(nvs_flash_init());
+    esp_netif_init();
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    ESP_ERROR_CHECK(example_connect());
+}
+
 void run_openocd(void)
 {
     setenv("OPENOCD_SCRIPTS", "/data", 1);
     const char* argv[] = {
         "openocd",
+        "-c", "bindto 0.0.0.0",
+        "-c", "set ESP_FLASH_SIZE 0",
         "-f", "interface/esp32_gpio.cfg",
-        "-f", "target/esp32.cfg"
+        "-f", "target/esp32.cfg",
+        "-c", "init; reset halt;"
     };
     int argc = sizeof(argv)/sizeof(argv[0]);
     int ret = openocd_main(argc, (char**) argv);
@@ -154,11 +107,10 @@ void run_openocd(void)
 
 void app_main(void)
 {
+    ESP_LOGI(TAG, "Setting up...");
     initialize_console();
     mount_storage();
-    ESP_LOGI(TAG, "Setting up...");
-    
-    // run_jimsh();
+    initialize_wifi();
 
     run_openocd();
 
