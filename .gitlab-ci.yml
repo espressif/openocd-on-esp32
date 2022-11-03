@@ -1,0 +1,35 @@
+stages:
+  - build
+
+# Global variables
+variables:
+  ESP_IDF_TAG_LATEST: "latest"
+  APP_NAME: "openocd-on-esp32"
+
+.build_template:
+  stage: build
+  variables:
+    CHIP_NAME: "esp32s3"
+  script:
+    # do not use --recursive update. Otherwise main/openocd/jimtcl creates build conflict.
+    - git submodule update --init
+    - IDF_TARGET=${CHIP_NAME} idf.py build
+    - cd build
+    - esptool.py --chip ${CHIP_NAME} merge_bin -o ${APP_NAME}_merged.bin @flash_args
+
+  artifacts:
+    paths:
+      - build/flasher_args.json
+      - build/${APP_NAME}.elf
+      - build/${APP_NAME}.bin
+      - build/bootloader/bootloader.bin
+      - build/bootloader/bootloader.elf
+      - build/partition_table/partition-table.bin
+      - build/${APP_NAME}_merged.bin
+    expire_in: 2 weeks
+
+build_latest:
+  extends: .build_template
+  image: espressif/idf:$ESP_IDF_TAG_LATEST
+  tags:
+    - build

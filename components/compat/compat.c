@@ -4,6 +4,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <pwd.h>
 
 int chdir(const char* path)
@@ -57,3 +59,11 @@ struct passwd *getpwuid(uid_t uid)
 {
     return NULL;
 }
+
+int getnameinfo(const struct sockaddr *addr, socklen_t addrlen,
+                char *host, socklen_t hostlen,
+                char *serv, socklen_t servlen, int flags)
+{
+    return EAI_FAIL;
+}
+

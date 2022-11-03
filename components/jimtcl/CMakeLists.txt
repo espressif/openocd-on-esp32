@@ -7,11 +7,11 @@ idf_build_get_property(compile_definitions COMPILE_DEFINITIONS GENERATOR_EXPRESS
 set(interface_include_directories $<TARGET_PROPERTY:idf::jimtcl,INTERFACE_INCLUDE_DIRECTORIES>)
 
 set (opts "${CMAKE_C_FLAGS}")
-string(APPEND opts " -I${COMPONENT_DIR}/platform_include")
+string(APPEND opts " -I${COMPONENT_DIR}/../platform_include")
 string(APPEND opts " -I$<JOIN:${interface_include_directories}, -I>")
 string(APPEND opts " $<JOIN:${compile_options}, >")
 string(APPEND opts " $<JOIN:${c_compile_options}, >")
-string(APPEND opts " $<JOIN:${compile_definitions}, >")
+string(APPEND opts " -D$<JOIN:${compile_definitions}, -D>")
 string(APPEND opts " -Wno-implicit-fallthrough -Wno-missing-field-initializers")
 string(APPEND opts " -DHAVE_USLEEP=1")
 

@@ -1,21 +1,21 @@
-# OpenOCD application for ESP32
+# OpenOCD application for ESP32S3
 
 ## Prerequisites
 
-- ESP32 board with PSRAM. ECO3 chip is preferred. This board will act as a debugger.
+- ESP32S3 board with PSRAM. This board will act as a debugger.
 - ESP32 target board, flashed e.g. with blink example.
 - Connect GPIOs to the debugger board to the target board:
 
   |Master pin | Function | Slave pin |
   |-----------|----------|-----------|
-  | 18        | TCK      | 13        |
-  | 19        | TMS      | 14        |
-  | 21        | TDI      | 12        |
-  | 22        | TDO      | 15        |
+  | 13        | TCK      | 13        |
+  | 14        | TMS      | 14        |
+  | 12        | TDI      | 12        |
+  | 11        | TDO      | 15        |
 
 If necessary, the master pins can be adjusted at run time using `esp32_gpio_jtag_nums <tck> <tms> <tdi> <tdo>` OpenOCD command. For example,
 
-    esp32_gpio_jtag_nums 18 19 21 22
+    esp32_gpio_jtag_nums 13 14 12 11
 
 sets the configuration shown above. The default pins are set in `interface/esp32_gpio.cfg` file (in the OpenOCD submodule).
 
@@ -25,13 +25,21 @@ sets the configuration shown above. The default pins are set in `interface/esp32
 
 2. Configure Wi-Fi SSID and password in menuconfig.
 
-3. Run `idf.py build`. This should build the application, `jimtcl` interpreter and OpenOCD. `jimtcl` and `openocd` require make and autotools for the build, so this might not work on Windows...
+3. Run `idf.py flash monitor` to build and flash the application and the SPIFFS filesystem image (generated at build time). When flashing again, use `idf.py app-flash` to only flash the application.
 
-4. Run `idf.py flash` to flash the application and the SPIFFS filesystem image (generated at build time). When flashing again, use `idf.py app-flash` to only flash the application.
+## Flash from jtag
+
+With the help of OpenOCD, it is also possible to load application from the jtag. During the cmake configuration phase, openocd binary is beging searched in the installed idf tools directory. If the binary is found, 2 commands will be ready to run;
+
+1. Use `cmake --build build -t jtag-flasher-full`  to flash the application and the SPIFFS filesystem
+
+2. Use `cmake --build build -t jtag-flasher` to only flash the application to the specific locatioon. Which is 0x10000 by default.
+
+`board/esp32s3-ftdi.cfg` is used as an OpenOCD config file.
 
 ## Run
 
-Open the monitor and check that the ESP32 output ends with the following:
+Open the monitor and check that the ESP32S3 output ends with the following:
 
 ```
 I (4006) example_connect: IPv4 address: 192.168.0.221
