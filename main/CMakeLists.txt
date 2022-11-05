@@ -52,6 +52,8 @@ target_link_libraries(openocd INTERFACE openocd_main)
 target_include_directories(${COMPONENT_LIB} PRIVATE $<TARGET_PROPERTY:openocd_main,INTERFACE_INCLUDE_DIRECTORIES>)
 target_link_libraries(${COMPONENT_LIB} PUBLIC openocd)
 
+include(${OPENOCD_DIR}/cmake/CreateTCL-lite.cmake)
+
 spiffs_create_partition_image(storage openocd/tcl-lite FLASH_IN_PROJECT)
 
 # custom target to load binaries from jtag.
