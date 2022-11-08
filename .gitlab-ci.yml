@@ -28,7 +28,6 @@ variables:
   script:
     - *add_gitlab_key
     - *submodules_mirror_update
-    - git submodule update --init
     - IDF_TARGET=${CHIP_NAME} idf.py build
     - cd build
     - esptool.py --chip ${CHIP_NAME} merge_bin -o ${APP_NAME}_merged.bin @flash_args

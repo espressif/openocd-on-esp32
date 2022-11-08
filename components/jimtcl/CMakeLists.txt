@@ -55,3 +55,8 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
 endif()
 
 add_custom_target(debug_jimtcl_opts COMMAND ${CMAKE_COMMAND} -E echo "${opts}")
+
+# jim-config.h is needed from openocd targets.
+# This is workaround to generate jim-config.h before any openocd target builds.
+# FIXME: configure or build jimtcl before openocd build 
+CONFIGURE_FILE(${COMPONENT_DIR}/jim-config.h.in ${COMPONENT_DIR}/jimtcl/jim-config.h)
