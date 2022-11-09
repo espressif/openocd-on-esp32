@@ -42,36 +42,49 @@ With the help of OpenOCD, it is also possible to load application from the jtag.
 Open the monitor and check that the ESP32S3 output ends with the following:
 
 ```
-I (4006) example_connect: IPv4 address: 192.168.0.221
-I (4016) example_connect: IPv6 address: fe80:0000:0000:0000:1afe:34ff:fe71:e720
-Open On-Chip Debugger  v0.10.0-esp32-20191112-2-gab0f29e9-dirty (2019-11-29-17:04)
+I (6393) example_common: - IPv4 address: 192.168.32.56,
+I (6393) example_common: - IPv6 address: fe80:0000:0000:0000:7edf:a1ff:fee0:104c, type: ESP_IP6_ADDR_IS_LINK_LOCAL
+Open On-Chip Debugger 0.11.0 (2022-11-09-16:08)
 Licensed under GNU GPL v2
 For bug reports, read
         http://openocd.org/doc/doxygen/bugs.html
+debug_level: 2
+
 Warn : Could not determine executable path, using configured BINDIR.
 Info : only one transport option; autoselect 'jtag'
-adapter speed: 1000 kHz
-esp32_gpio GPIO config: tck = 18, tms = 19, tdi = 21, tdo = 22
+esp32_gpio GPIO config: tck = 13, tms = 14, tdi = 12, tdo = 11
+
 Warn : Transport "jtag" was already selected
-Info : Configured 2 cores
-Error: type 'esp32' is missing virt2phys
 Info : esp32_gpio GPIO JTAG bitbang driver
 Info : clock speed 1000 kHz
 Info : JTAG tap: esp32.cpu0 tap/device found: 0x120034e5 (mfg: 0x272 (Tensilica), part: 0x2003, ver: 0x1)
 Info : JTAG tap: esp32.cpu1 tap/device found: 0x120034e5 (mfg: 0x272 (Tensilica), part: 0x2003, ver: 0x1)
-Info : Target halted. CPU0: PC=0x400D395A (active)
-Info : Target halted. CPU1: PC=0x400E285A 
+Info : starting gdb server for esp32.cpu0 on 3333
 Info : Listening on port 3333 for gdb connections
+Info : [esp32.cpu0] Debug controller was reset.
+Info : [esp32.cpu0] Core was reset.
+Info : [esp32.cpu1] Debug controller was reset.
+Info : [esp32.cpu1] Core was reset.
 Info : JTAG tap: esp32.cpu0 tap/device found: 0x120034e5 (mfg: 0x272 (Tensilica), part: 0x2003, ver: 0x1)
 Info : JTAG tap: esp32.cpu1 tap/device found: 0x120034e5 (mfg: 0x272 (Tensilica), part: 0x2003, ver: 0x1)
-Info : cpu0: Debug controller 0 was reset.
-Info : cpu0: Core 0 was reset.
-Info : cpu0: Target halted, PC=0x500000CF, debug_reason=00000000
-Info : esp32: Core 0 was reset.
-Info : esp32: Debug controller 1 was reset.
-Info : esp32: Core 1 was reset.
-Info : Target halted. CPU0: PC=0x40000400 (active)
-Info : Target halted. CPU1: PC=0x40000400 
+Info : [esp32.cpu0] requesting target halt and executing a soft reset
+Info : [esp32.cpu0] Target halted, PC=0x400845FE, debug_reason=00000000
+Info : [esp32.cpu0] Reset cause (1) - (Power on reset)
+Info : Set GDB target to 'esp32.cpu0'
+Info : [esp32.cpu1] Target halted, PC=0x400845FE, debug_reason=00000000
+Info : [esp32.cpu1] Reset cause (14) - (CPU1 reset by CPU0)
+Info : [esp32.cpu0] Debug controller was reset.
+Info : [esp32.cpu0] Core was reset.
+Info : [esp32.cpu0] Target halted, PC=0x500000CF, debug_reason=00000000
+Info : [esp32.cpu0] Reset cause (3) - (Software core reset)
+Info : [esp32.cpu1] requesting target halt and executing a soft reset
+Info : [esp32.cpu0] Core was reset.
+Info : [esp32.cpu0] Target halted, PC=0x40000400, debug_reason=00000000
+Info : [esp32.cpu1] Debug controller was reset.
+Info : [esp32.cpu1] Core was reset.
+Info : [esp32.cpu1] Target halted, PC=0x40000400, debug_reason=00000000
+Info : [esp32.cpu1] Reset cause (14) - (CPU1 reset by CPU0)
+Info : [esp32.cpu0] Reset cause (3) - (Software core reset)
 Info : Listening on port 6666 for tcl connections
 Info : Listening on port 4444 for telnet connections
 ```
@@ -82,6 +95,6 @@ Note the IP printed in the "example_connect" line before OpenOCD output starts.
 
 Run GDB and instruct it to connect to the debugger over TCP:
 
-    xtensa-esp32-elf-gdb  -ex "set remotetimeout 30" -ex "target remote 192.168.0.221:3333" build/blink.elf
+    xtensa-esp32-elf-gdb  -ex "set remotetimeout 30" -ex "target extended-remote 192.168.0.221:3333" build/blink.elf
 
 (replace the IP address with the one you saw in the log).
