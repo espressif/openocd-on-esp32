@@ -23,8 +23,13 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     ExternalProject_Add(jimtcl_build
         PREFIX ${COMPONENT_DIR}
         SOURCE_DIR ${COMPONENT_DIR}/jimtcl
-        CONFIGURE_COMMAND ./configure --host=${host_prefix} "CFLAGS=${opts}"
+        CONFIGURE_COMMAND ./configure --disable-install-jim --with-ext=json --host=${host_prefix} "CFLAGS=${opts}"
         BUILD_IN_SOURCE 1
+        # These two options are set so that Ninja immediately outputs
+        # the subproject build to the terminal. Otherwise it looks like the
+        # build process "hangs" for too long until jimtcl build is complete.
+        USES_TERMINAL_CONFIGURE TRUE
+        USES_TERMINAL_BUILD TRUE
         BUILD_COMMAND make libjim.a initjimsh.o
         INSTALL_COMMAND ""
         BUILD_BYPRODUCTS ${COMPONENT_DIR}/jimtcl/libjim.a ${COMPONENT_DIR}/jimtcl/initjimsh.o
@@ -55,8 +60,3 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
 endif()
 
 add_custom_target(debug_jimtcl_opts COMMAND ${CMAKE_COMMAND} -E echo "${opts}")
-
-# jim-config.h is needed from openocd targets.
-# This is workaround to generate jim-config.h before any openocd target builds.
-# FIXME: configure or build jimtcl before openocd build 
-CONFIGURE_FILE(${COMPONENT_DIR}/jim-config.h.in ${COMPONENT_DIR}/jimtcl/jim-config.h)
