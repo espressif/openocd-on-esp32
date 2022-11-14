@@ -7,11 +7,11 @@ idf_build_get_property(compile_definitions COMPILE_DEFINITIONS GENERATOR_EXPRESS
 set(interface_include_directories $<TARGET_PROPERTY:idf::jimtcl,INTERFACE_INCLUDE_DIRECTORIES>)
 
 set (opts "${CMAKE_C_FLAGS}")
-string(APPEND opts " -I${COMPONENT_DIR}/platform_include")
+string(APPEND opts " -I${COMPONENT_DIR}/../platform_include")
 string(APPEND opts " -I$<JOIN:${interface_include_directories}, -I>")
 string(APPEND opts " $<JOIN:${compile_options}, >")
 string(APPEND opts " $<JOIN:${c_compile_options}, >")
-string(APPEND opts " $<JOIN:${compile_definitions}, >")
+string(APPEND opts " -D$<JOIN:${compile_definitions}, -D>")
 string(APPEND opts " -Wno-implicit-fallthrough -Wno-missing-field-initializers")
 string(APPEND opts " -DHAVE_USLEEP=1")
 
@@ -23,8 +23,13 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     ExternalProject_Add(jimtcl_build
         PREFIX ${COMPONENT_DIR}
         SOURCE_DIR ${COMPONENT_DIR}/jimtcl
-        CONFIGURE_COMMAND ./configure --host=${host_prefix} "CFLAGS=${opts}"
+        CONFIGURE_COMMAND ./configure --disable-install-jim --with-ext=json --host=${host_prefix} "CFLAGS=${opts}"
         BUILD_IN_SOURCE 1
+        # These two options are set so that Ninja immediately outputs
+        # the subproject build to the terminal. Otherwise it looks like the
+        # build process "hangs" for too long until jimtcl build is complete.
+        USES_TERMINAL_CONFIGURE TRUE
+        USES_TERMINAL_BUILD TRUE
         BUILD_COMMAND make libjim.a initjimsh.o
         INSTALL_COMMAND ""
         BUILD_BYPRODUCTS ${COMPONENT_DIR}/jimtcl/libjim.a ${COMPONENT_DIR}/jimtcl/initjimsh.o

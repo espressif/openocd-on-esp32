@@ -1,6 +1,6 @@
-[submodule "app/components/openocd/openocd"]
-	path = app/components/openocd/openocd
+[submodule "main/openocd"]
+	path = main/openocd
 	url = ssh://git@gitlab.espressif.cn:27227/idf/openocd-esp32.git
-[submodule "app/components/jimtcl/jimtcl"]
-	path = app/components/jimtcl/jimtcl
+[submodule "components/jimtcl/jimtcl"]
+	path = components/jimtcl/jimtcl
 	url = ssh://git@gitlab.espressif.cn:27227/idf/jimtcl.git

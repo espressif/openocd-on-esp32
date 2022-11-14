@@ -1,0 +1,8 @@
+set pagination off
+
+target remote :3333
+symbol-file build/openocd-on-esp32.elf
+mon reset halt
+flushregs
+thb app_main
+c
