@@ -6,28 +6,14 @@ variables:
   ESP_IDF_TAG_LATEST: "latest"
   APP_NAME: "openocd-on-esp32"
 
-.add_gitlab_key: &add_gitlab_key |
-  command -v ssh-agent >/dev/null || exit 1
-  eval $(ssh-agent -s)
-  printf '%s\n' "${GITLAB_KEY}" | tr -d '\r' | ssh-add - > /dev/null
-  mkdir -p ~/.ssh && chmod 700 ~/.ssh
-  [[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config || true
-
-.submodules_mirror_update: &submodules_mirror_update |
-  # Gitlab doesn't clean submodule contents
-  git submodule foreach "git clean -d -x -f" || true
-  # Use local mirror for submodules
-  git config submodule.components/jimtcl/jimtcl.url https://gitlab-ci-token:${BOT_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/idf/jimtcl.git
-  git config submodule.main/openocd.url https://gitlab-ci-token:${BOT_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/idf/openocd-esp32.git
-  git submodule update --init
-
 .build_template:
   stage: build
   variables:
     CHIP_NAME: "esp32s3"
   script:
-    - *add_gitlab_key
-    - *submodules_mirror_update
+    # Gitlab doesn't clean submodule contents
+    - git submodule foreach "git clean -d -x -f" || true
+    - git submodule update --init
     - IDF_TARGET=${CHIP_NAME} idf.py build
     - cd build
     - esptool.py --chip ${CHIP_NAME} merge_bin -o ${APP_NAME}_merged.bin @flash_args
