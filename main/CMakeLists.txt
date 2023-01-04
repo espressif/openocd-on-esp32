@@ -1,5 +1,7 @@
 set(sources
     main.c
+    networking.c
+    storage.c
 )
 
 set(dependencies
@@ -8,10 +10,11 @@ set(dependencies
     nvs_flash 
     esp_netif
     console
-    protocol_examples_common
     esptool_py  
     esp_gdbstub 
     esp_psram
+    esp_http_server
+    esp_wifi
     jimtcl 
     compat
     platform_include
@@ -24,6 +27,7 @@ idf_component_register(
         "."
     PRIV_REQUIRES
         ${dependencies}
+    EMBED_FILES "web_page.html"
 )
 
 set(host "esp-idf")
