@@ -1,0 +1,174 @@
+<!DOCTYPE html><html><body>
+    <table class="fixed" border="0">
+        <col width="1000px" /><col width="500px" />
+        <tr><td>
+            <h2>ESP-OCD Configration</h2>
+        </td><td>
+        </tr> 
+        <tr>
+            <table border="0">
+                <tr>
+                    <td>
+                        <label for="ssid">SSID Name:</label>
+                    </td>
+                    <td>
+                        <input id="ssid" type="text" style="width:100%;">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="password">Password:</label>
+                    </td>
+                    <td>
+                        <input id="password" type="text" style="width:100%;">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                    </td>
+                    <td>
+                        <div style="display:flex; justify-content:flex-end; width:105%; overflow: hidden; align-self: flex-end;" class="float-right">
+                            <button id="reset" type="button" onclick="resetCredentials()">Reset</button>
+                            <button id="save" type="button" onclick="saveCredentials()">Save</button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <!-- Empy row to divide credential info and config file info -->
+                    <td>
+                        <br>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="config">OpenOCD config:</label>
+                    </td>
+                    <td>
+                        <input id="config" type="text" style="width:100%;">
+                    </td>
+                    <td>
+                        <button id="set" type="button" onclick="setOpenocdConfig()">Set</button>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body></html>
+<script>
+    function saveCredentials() {
+        var ssid = document.getElementById("ssid").value;
+        var pass = document.getElementById("password").value;
+        var valid_credentials = 1;
+        var forbidden_letters = ["?", "\"", "$", "[", "\\", "]", "+"];
+        var forbidden_first_letters = ["!", "#", ";", " "];
+        
+        if (ssid.length < 2 || ssid.length > 32) {
+            alert("SSID on server is wrong!");
+            valid_credentials = 0;
+        }
+        if (pass.length > 63) {
+            alert("Password on server is wrong!");
+            valid_credentials = 0;
+        }
+        if (forbidden_first_letters.includes(ssid[0])) {
+            alert("Invalid SSID!");
+            valid_credentials = 0;
+        }
+        for (let item of ssid) {
+            if (item.charCodeAt(0) >= 0x20 && item.charCodeAt(0) <= 0x7E) {
+                if(forbidden_letters.includes(item)) {
+                    alert("Invalid SSID!");
+                    valid_credentials = 0;
+                }
+            } else {
+                alert("Invalid SSID!");
+                valid_credentials = 0;
+            }
+        }
+        
+        if (valid_credentials) {
+            console.log("Credentials are valid, lets send");
+            document.getElementById("ssid").disabled = true;
+            document.getElementById("password").disabled = true;
+            document.getElementById("save").disabled = true;
+            document.getElementById("reset").disabled = true;
+            
+            var packet = ssid + "+" + pass ;
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function() {
+                if (xhttp.readyState == 4) {
+                    if (xhttp.status == 200) {
+                        document.open();
+                        document.write(xhttp.responseText);
+                        document.close();
+                    } else if (xhttp.status == 0) {
+                        alert("Server closed the connection abruptly!");
+                        location.reload()
+                    } else {
+                        alert(xhttp.status + " Error!\n" + xhttp.responseText);
+                        location.reload()
+                    }
+                }
+            };
+            xhttp.open("POST", "/save_credentials", true);
+            xhttp.send(packet);
+        }
+    }
+    
+    function resetCredentials() {
+        document.getElementById("ssid").disabled = true;
+        document.getElementById("password").disabled = true;
+        document.getElementById("save").disabled = true;
+        document.getElementById("reset").disabled = true;
+        
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+            if (xhttp.readyState == 4) {
+                if (xhttp.status == 200) {
+                    document.open();
+                    document.write(xhttp.responseText);
+                    document.close();
+                } else if (xhttp.status == 0) {
+                    alert("Server closed the connection abruptly!");
+                    location.reload()
+                } else {
+                    alert(xhttp.status + " Error!\n" + xhttp.responseText);
+                    location.reload()
+                }
+            }
+        };
+        xhttp.open("POST", "/reset_credentials", true);
+        xhttp.send();
+    }
+    
+    function setOpenocdConfig() {
+        var configString = document.getElementById("config").value;
+        
+        if (configString.length == 0) {
+            alert("Config file name on server is not set!");
+        }
+        
+        document.getElementById("config").disabled = true;
+        document.getElementById("set").disabled = true;
+
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+            if (xhttp.readyState == 4) {
+                if (xhttp.status == 200) {
+                    document.open();
+                    document.write(xhttp.responseText);
+                    document.close();
+                } else if (xhttp.status == 0) {
+                    alert("Server closed the connection abruptly!");
+                    location.reload()
+                } else {
+                    alert(xhttp.status + " Error!\n" + xhttp.responseText);
+                    location.reload()
+                }
+            }
+        };
+        xhttp.open("POST", "/set_openocd_config", true);
+        xhttp.send(configString);
+    }
+</script>

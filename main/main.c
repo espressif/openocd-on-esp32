@@ -7,8 +7,9 @@
 #include "nvs_flash.h"
 #include "esp_vfs_dev.h"
 #include "driver/uart.h"
-#include "protocol_examples_common.h"
 
+#include "storage.h"
+#include "networking.h"
 #include "openocd.h"
 
 static const char *TAG = "main";
@@ -47,58 +48,19 @@ static void initialize_console(void)
     esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
 }
 
-void mount_storage(void)
+void run_openocd(char *config_str)
 {
-    ESP_LOGI(TAG, "Initializing SPIFFS");
-
-    esp_vfs_spiffs_conf_t conf = {
-      .base_path = "/data",
-      .partition_label = NULL,
-      .max_files = 5,
-      .format_if_mount_failed = false
-    };
-
-    // Use settings defined above to initialize and mount SPIFFS filesystem.
-    // Note: esp_vfs_spiffs_register is an all-in-one convenience function.
-    esp_err_t ret = esp_vfs_spiffs_register(&conf);
-
-    if (ret != ESP_OK) {
-        if (ret == ESP_FAIL) {
-            ESP_LOGE(TAG, "Failed to mount or format filesystem");
-        } else if (ret == ESP_ERR_NOT_FOUND) {
-            ESP_LOGE(TAG, "Failed to find SPIFFS partition");
-        } else {
-            ESP_LOGE(TAG, "Failed to initialize SPIFFS (%s)", esp_err_to_name(ret));
-        }
+    if (!config_str) {
+        ESP_LOGE(TAG, "Config file is NULL");
         return;
     }
 
-    size_t total = 0, used = 0;
-    ret = esp_spiffs_info(NULL, &total, &used);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret));
-    } else {
-        ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
-    }
-}
-
-void initialize_wifi(void)
-{
-    ESP_LOGI(TAG, "Initializing Wi-Fi");
-    ESP_ERROR_CHECK(nvs_flash_init());
-    esp_netif_init();
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    ESP_ERROR_CHECK(example_connect());
-}
-
-void run_openocd(void)
-{
     setenv("OPENOCD_SCRIPTS", "/data", 1);
     const char* argv[] = {
         "openocd",
         "-c", "bindto 0.0.0.0",
         "-f", "interface/esp32_gpio.cfg",
-        "-f", "target/esp32.cfg",
+        "-f", config_str,
         "-c", "init; reset halt;",
         "-d2"
     };
@@ -107,15 +69,29 @@ void run_openocd(void)
     ESP_LOGI(TAG, "openocd has finished, exit code %d", ret);
 }
 
+esp_err_t initialize_wifi(char **config_str)
+{
+    ESP_LOGI(TAG, "Initializing Wi-Fi");
+    esp_netif_init();
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    return setup_network(config_str);
+}
+
 void app_main(void)
 {
+    char *config_str;
     ESP_LOGI(TAG, "Setting up...");
+    ESP_ERROR_CHECK(nvs_flash_init());
     initialize_console();
-    mount_storage();
-    initialize_wifi();
-
-    run_openocd();
-
-    vTaskDelay(1000/portTICK_PERIOD_MS);
-    esp_restart();
+    ESP_ERROR_CHECK(mount_storage());
+    ESP_ERROR_CHECK(initialize_wifi(&config_str));
+    if (config_str) {
+        run_openocd(config_str);
+        free(config_str);
+    }
+    ESP_LOGW(TAG, "OpenOCD has finished. You can either reset the board or send the config file from the web interface to restart device");
+    while (true) {
+        ESP_LOGI(TAG, "Infinite loop");
+        vTaskDelay(3000 / portTICK_PERIOD_MS);
+    }
 }
