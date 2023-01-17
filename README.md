@@ -98,3 +98,16 @@ Run GDB and instruct it to connect to the debugger over TCP:
     xtensa-esp32-elf-gdb  -ex "set remotetimeout 30" -ex "target extended-remote 192.168.0.221:3333" build/blink.elf
 
 (replace the IP address with the one you saw in the log).
+
+## Web server connection
+
+In the first run, ESP32-OOCD runs as an access point (ap mode) with default ssid `ESP32-OOCD` and default password `esp32pass`. You can access the web server by typing the IP address `192.168.4.1` on a browser. Then, you will see the configuration menu to instantly change wifi settings and OpenOCD command line arguments.
+The last saved Wi-Fi and OpenOCD configuration will be used in every reset. Wifi mode will be switched to the `station` after the default password is changed. If there will be a connection issue after some retrying ESP32-OOCD will return to the wifi factory setting.
+
+## OpenOCD configuration
+
+For the OpenOCD configuration, there are three parameters, which are --file/-f, --command/-c and --debug/-d. If we detail them:
+
+- --file/-f: expects only connected target config file name, e.g. `target/esp32s2.cfg`. The default value of this parameter is "target/esp32.cfg" and it cannot be empty in the OpenOCD configuration. The interface config file is set to statically `interface/esp32_gpio.cfg`
+- --command/-c: takes command arguments. e.g. `init; reset halt`
+- --debug/-d: takes debug verbosity value e.g. `3`

@@ -1,16 +1,15 @@
 #ifndef __STORAGE_H__
 #define __STORAGE_H__
 
-#define STORAGE_NAMESPACE           "NVS_DATA"
-#define CONFIG_KEY                  "config"
-#define CREDENTIALS_KEY             "credentials"
+#define OOCD_F_PARAM_KEY            "file"
+#define OOCD_C_PARAM_KEY            "command"
+#define OOCD_D_PARAM_KEY            "debug"
 
-extern size_t credentials_length;
-
-int mount_storage(void);
-int write_nvs(char *key, char *value, int size);
-int read_nvs(char *key, char *value, size_t *size);
-int erase_nvs(void);
-int erase_key_nvs(char *key);
+esp_err_t storage_init_filesystem(void);
+esp_err_t storage_nvs_write(const char *key, const char *value, size_t size);
+esp_err_t storage_nvs_read(const char *key, char *value, size_t size);
+esp_err_t storage_nvs_erase_key(const char *key);
+size_t storage_nvs_get_value_length(const char *key);
+bool storage_nvs_is_key_exist(const char *key);
 
 #endif

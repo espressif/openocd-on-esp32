@@ -1,14 +1,16 @@
 #include "nvs_flash.h"
 #include "esp_spiffs.h"
 #include "esp_log.h"
-#include "storage.h"
 #include "esp_check.h"
 
-static const char *TAG = "storage";
-/* ssid:32 password:64 delimiter:1 null:1 */
-size_t credentials_length = 98;
+#include "storage.h"
 
-int mount_storage(void)
+#define STORAGE_NAMESPACE           "NVS_DATA"
+
+
+static const char *TAG = "storage";
+
+esp_err_t storage_init_filesystem(void)
 {
     ESP_LOGI(TAG, "Initializing SPIFFS");
 
@@ -45,7 +47,7 @@ int mount_storage(void)
     return ESP_OK;
 }
 
-int write_nvs(char *key, char *value, int size)
+esp_err_t storage_nvs_write(const char *key, const char *value, size_t size)
 {
     nvs_handle_t my_handle;
 
@@ -53,36 +55,67 @@ int write_nvs(char *key, char *value, int size)
     ESP_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
     ESP_RETURN_ON_ERROR(nvs_set_blob(my_handle, key, value, size), TAG, "Failed to set blob \"%s\"", key);
     ESP_RETURN_ON_ERROR(nvs_commit(my_handle), TAG, "Failed save changes");
-
     nvs_close(my_handle);
+
     return ESP_OK;
 }
 
-int read_nvs(char *key, char *value, size_t *size)
+esp_err_t storage_nvs_read(const char *key, char *value, size_t size)
+{
+    nvs_handle_t my_handle;
+    size_t n_bytes = size;
+
+    ESP_RETURN_ON_ERROR(!key, TAG, "Key is NULL");
+    ESP_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
+    ESP_RETURN_ON_ERROR(nvs_get_blob(my_handle, key, value, &n_bytes), TAG, "Failed to get blob \"%s\"", key);
+    nvs_close(my_handle);
+
+    if (n_bytes != size)
+        return ESP_FAIL;
+
+    return ESP_OK;
+}
+
+int storage_nvs_erase_key(const char *key)
 {
     nvs_handle_t my_handle;
 
     ESP_RETURN_ON_ERROR(!key, TAG, "Key is NULL");
     ESP_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
-    ESP_RETURN_ON_ERROR(nvs_get_blob(my_handle, key, value, size), TAG, "Failed to get blob \"%s\"", key);
-
-    nvs_close(my_handle);
-    return ESP_OK;
-}
-
-int erase_nvs(void)
-{
-    return nvs_flash_erase();
-}
-
-int erase_key_nvs(char *key)
-{
-    nvs_handle_t my_handle;
-
-    ESP_RETURN_ON_ERROR(!key, TAG, "Key is NULL");
-    ESP_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
-
     ESP_RETURN_ON_ERROR(nvs_erase_key(my_handle, key), TAG, "Failed to erase \"%s\"", key);
     nvs_close(my_handle);
+
     return ESP_OK;
+}
+
+size_t storage_nvs_get_value_length(const char *key)
+{
+    nvs_handle_t my_handle;
+    size_t length;
+
+    if (!key) {
+        ESP_LOGE(TAG, "Key is NULL");
+        return 0;
+    }
+
+    esp_err_t ret = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open namespace");
+        return 0;
+    }
+
+    ret = nvs_get_blob(my_handle, key, NULL, &length);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get blob \"%s\"", key);
+        return 0;
+    }
+
+    nvs_close(my_handle);
+
+    return length;
+}
+
+bool storage_nvs_is_key_exist(const char *key)
+{
+    return storage_nvs_get_value_length(key) > 0;
 }
