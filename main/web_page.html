@@ -2,11 +2,16 @@
     <table class="fixed" border="0">
         <col width="1000px" /><col width="500px" />
         <tr><td>
-            <h2>ESP-OCD Configration</h2>
+            <h2>ESP-OOCD Configuration</h2>
         </td><td>
         </tr> 
         <tr>
             <table border="0">
+                <tr>
+                    <td>
+                        <h3>WiFi Credentials</h3>
+                    </td>
+                </tr>
                 <tr>
                     <td>
                         <label for="ssid">SSID Name:</label>
@@ -29,7 +34,7 @@
                     <td>
                         <div style="display:flex; justify-content:flex-end; width:105%; overflow: hidden; align-self: flex-end;" class="float-right">
                             <button id="reset" type="button" onclick="resetCredentials()">Reset</button>
-                            <button id="save" type="button" onclick="saveCredentials()">Save</button>
+                            <button id="save" type="button" onclick="saveCredentials()">Set</button>
                         </div>
                     </td>
                 </tr>
@@ -41,15 +46,41 @@
                 </tr>
                 <tr>
                     <td>
-                        <label for="config">OpenOCD config:</label>
-                    </td>
-                    <td>
-                        <input id="config" type="text" style="width:100%;">
-                    </td>
-                    <td>
-                        <button id="set" type="button" onclick="setOpenocdConfig()">Set</button>
+                        <h3>OpenOCD Parameters</h3>
                     </td>
                 </tr>
+                <tr>
+                    <td>
+                        <label for="config">--file/-f:</label>
+                    </td>
+                    <td>
+                        <input id="fCommand" type="text" style="width:100%;">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="config">--command/-c:</label>
+                    </td>
+                    <td>
+                        <input id="cCommand" type="text" style="width:100%;">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="config">--debug/-d:</label>
+                    </td>
+                    <td>
+                        <input id="dCommand" type="text" style="width:100%;">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                    </td>
+                <td>
+                    <div style="display:flex; justify-content:flex-end; width:105%; overflow: hidden; align-self: flex-end;" class="float-right">
+                    <button id="set" type="button" onclick="setOpenocdConfig()">Set</button>
+                </td>
+            </tr>
             </table>
         </td>
     </tr>
@@ -143,14 +174,17 @@
     }
     
     function setOpenocdConfig() {
-        var configString = document.getElementById("config").value;
+        var fCommand = document.getElementById("fCommand").value;
+        var cCommand = document.getElementById("cCommand").value;
+        var dCommand = document.getElementById("dCommand").value;
         
-        if (configString.length == 0) {
-            alert("Config file name on server is not set!");
+        if (fCommand.length == 0) {
+            alert("File parameter is not set!");
         }
-        
-        document.getElementById("config").disabled = true;
-        document.getElementById("set").disabled = true;
+
+        document.getElementById("fCommand").disabled = true;
+        document.getElementById("cCommand").disabled = true;
+        document.getElementById("dCommand").disabled = true;
 
         var xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function() {
@@ -168,6 +202,20 @@
                 }
             }
         };
+
+        var delimiter = "&"
+        var flags= ["-f", "--file", "-c", "--command", "--debug", "-d"]
+
+        flags.forEach(value => fCommand = fCommand.replaceAll(value, ""));
+        var configString = "-f" + delimiter + fCommand;
+        if (cCommand.length > 0) {
+            flags.forEach(value => cCommand = cCommand.replaceAll(value, ""));
+            configString+= delimiter + "-c" + delimiter + cCommand;
+        }
+        if (dCommand.length > 0) {
+            flags.forEach(value => dCommand = dCommand.replaceAll(value, ""));
+            configString+= delimiter + "-d" + dCommand;
+        }
         xhttp.open("POST", "/set_openocd_config", true);
         xhttp.send(configString);
     }

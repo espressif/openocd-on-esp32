@@ -14,4 +14,4 @@ struct winsize {
 #define TIOCLINUX  (('T' << 8) | 3)
 #define TIOCGPGRP  (('T' << 8) | 0xf)
 #define TIOCSPGRP  (('T' << 8) | 0x10)
-#define CRTSCTS	 0x08000
+#define CRTSCTS  0x08000
