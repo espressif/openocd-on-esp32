@@ -28,14 +28,14 @@ static void init_console(void)
      * correct while APB frequency is changing in light sleep mode.
      */
     const uart_config_t uart_config = {
-            .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE,
-            .data_bits = UART_DATA_8_BITS,
-            .parity = UART_PARITY_DISABLE,
-            .stop_bits = UART_STOP_BITS_1,
+        .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
 #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2
-            .source_clk = UART_SCLK_REF_TICK,
+        .source_clk = UART_SCLK_REF_TICK,
 #else
-            .source_clk = UART_SCLK_XTAL,
+        .source_clk = UART_SCLK_XTAL,
 #endif
     };
     /* Install UART driver for interrupt-driven reads and writes */
@@ -54,8 +54,9 @@ esp_err_t read_oocd_param(char *key, char **value)
 
     /* First read length of the config string */
     size_t len = storage_nvs_get_value_length(key);
-    if (len == 0)
+    if (len == 0) {
         return ESP_FAIL;
+    }
 
     /* allocate memory for the null terminated string */
     char *ptr = (char *)calloc(len + 1, sizeof(char));
@@ -114,14 +115,16 @@ void run_openocd()
         argv[argc++] = param;
     }
 
-    int ret = openocd_main(argc, (char**)argv); 
+    int ret = openocd_main(argc, (char **)argv);
     ESP_LOGI(TAG, "openocd has finished, exit code %d", ret);
 
     free(argv[6]);
-    if (argc > 6)
+    if (argc > 6) {
         free(argv[8]);
-    if (argc > 8)
+    }
+    if (argc > 8) {
         free(argv[9]);
+    }
 }
 
 void idf_init(void)
@@ -153,7 +156,7 @@ esp_err_t app_param_init(void)
 esp_err_t wait_for_connection(TickType_t timeout)
 {
     if (networking_wait_for_connection(timeout) != ESP_OK) {
-        ESP_LOGE(TAG, "WiFi credentials has not entered in %d seconds. Restarting...", (timeout/1000));
+        ESP_LOGE(TAG, "WiFi credentials has not entered in %d seconds. Restarting...", (timeout / 1000));
         esp_restart();
     }
     return ESP_OK;
@@ -169,7 +172,7 @@ void app_main(void)
 
     run_openocd();
     ESP_LOGW(TAG, "OpenOCD has finished. "
-        "You can either reset the board or send the config file from the web interface to restart device");
+             "You can either reset the board or send the config file from the web interface to restart device");
 
     while (true) {
         ESP_LOGI(TAG, "Infinite loop");

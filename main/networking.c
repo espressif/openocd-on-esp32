@@ -44,8 +44,9 @@ static esp_err_t send_response(httpd_req_t *req, const char *response_msg)
 
 static esp_err_t common_handler(httpd_req_t *req, int recv_size, const char *response_msg)
 {
-    if (!req)
+    if (!req) {
         return ESP_FAIL;
+    }
 
     int ret = httpd_req_recv(req, req->user_ctx, recv_size);
     if (ret <= 0) {  /* 0 return value indicates connection closed */
@@ -99,15 +100,17 @@ static esp_err_t save_credentials_handler(httpd_req_t *req)
     ESP_RETURN_ON_ERROR(get_credentials(&ssid, &pass, buff), TAG, "Error on parsing credentials");
 
     ret = storage_nvs_write(SSID_KEY, ssid, SSID_LENGTH);
-    if (ret != ESP_OK)
+    if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to save SSID (%d)", ret);
+    }
 
     ret = storage_nvs_write(PASSWORD_KEY, pass, PASSWORD_LENGTH);
-    if (ret != ESP_OK)
+    if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to save WiFi password (%d)", ret);
+    }
 
     networking_set_wifi_mode(WIFI_STA_MODE);
-    
+
     esp_restart();
 
     return ESP_OK;
@@ -154,8 +157,9 @@ static esp_err_t set_openocd_config_handler(httpd_req_t *req)
         } else if (strstr(tmp_str, "-d") != NULL || strstr(tmp_str, "--debug") != NULL) {
             ESP_LOGI(TAG, "Saving -d param:[%s]", tmp_str);
             ret = storage_nvs_write(OOCD_D_PARAM_KEY, tmp_str, strlen(tmp_str));
-            if (ret != ESP_OK)
+            if (ret != ESP_OK) {
                 ESP_LOGE(TAG, "Failed to save config --debug, -d parameter");
+            }
         } else {
             ESP_LOGE(TAG, "Invalid parameter flag");
             return ESP_FAIL;
@@ -214,8 +218,7 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
             esp_wifi_connect();
             s_retry_num++;
             ESP_LOGI(TAG, "retry to connect to the AP");
-        }
-        else {
+        } else {
             s_retry_num = 0;
             /* If connection fails, delete the credentials and restart the system */
             storage_nvs_erase_key(SSID_KEY);
@@ -223,9 +226,9 @@ static void event_handler(void *arg, esp_event_base_t event_base, int32_t event_
             storage_nvs_erase_key(WIFI_MODE_KEY);
             esp_restart();
         }
-        ESP_LOGI(TAG,"connect to the AP fail");
+        ESP_LOGI(TAG, "connect to the AP fail");
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         s_retry_num = 0;
         xEventGroupSetBits(s_event_group, OOCD_START_FLAG);
@@ -300,8 +303,9 @@ esp_err_t networking_init_sta_mode(void)
 
     /* Check that, credentials set before, if not set, init WiFi as access point */
     esp_err_t ret = storage_nvs_read(PASSWORD_KEY, password, PASSWORD_LENGTH);
-    if (ret != ESP_OK)
+    if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get WiFi password");
+    }
     ret = storage_nvs_read(SSID_KEY, ssid, SSID_LENGTH);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get WiFi SSID. Trying access point mode");
@@ -331,23 +335,23 @@ esp_err_t networking_init_sta_mode(void)
     esp_event_handler_instance_t instance_got_ip;
 
     ESP_RETURN_ON_ERROR(esp_event_handler_instance_register(WIFI_EVENT,
-                                                        ESP_EVENT_ANY_ID,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_any_id),
-                                                        TAG,
-                                                        "Failed at %s:%d", __FILE__, __LINE__);
+                        ESP_EVENT_ANY_ID,
+                        &event_handler,
+                        NULL,
+                        &instance_any_id),
+                        TAG,
+                        "Failed at %s:%d", __FILE__, __LINE__);
     ESP_RETURN_ON_ERROR(esp_event_handler_instance_register(IP_EVENT,
-                                                        IP_EVENT_STA_GOT_IP,
-                                                        &event_handler,
-                                                        NULL,
-                                                        &instance_got_ip),
-                                                        TAG,
-                                                        "Failed at %s:%d", __FILE__, __LINE__);
+                        IP_EVENT_STA_GOT_IP,
+                        &event_handler,
+                        NULL,
+                        &instance_got_ip),
+                        TAG,
+                        "Failed at %s:%d", __FILE__, __LINE__);
 
     wifi_config_t wifi_config = { 0 };
-	strcpy((char *)wifi_config.sta.ssid, ssid);
-	strcpy((char *)wifi_config.sta.password, password);
+    strcpy((char *)wifi_config.sta.ssid, ssid);
+    strcpy((char *)wifi_config.sta.password, password);
 
     ESP_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_STA), TAG, "Failed at %s:%d", __FILE__, __LINE__);
     ESP_RETURN_ON_ERROR(esp_wifi_set_config(WIFI_IF_STA, &wifi_config), TAG, "Failed at %s:%d", __FILE__, __LINE__);
@@ -372,12 +376,12 @@ esp_err_t networking_init_ap_mode(void)
     ESP_RETURN_ON_ERROR(esp_wifi_init(&cfg), TAG, "Failed at %s:%d", __FILE__, __LINE__);
 
     ESP_RETURN_ON_ERROR(esp_event_handler_instance_register(WIFI_EVENT,
-                                                        ESP_EVENT_ANY_ID,
-                                                        &event_handler,
-                                                        NULL,
-                                                        NULL),
-                                                        TAG,
-                                                        "Failed at %s:%d", __FILE__, __LINE__);
+                        ESP_EVENT_ANY_ID,
+                        &event_handler,
+                        NULL,
+                        NULL),
+                        TAG,
+                        "Failed at %s:%d", __FILE__, __LINE__);
 
     wifi_config_t wifi_config = {
         .ap = {
@@ -405,11 +409,11 @@ esp_err_t networking_wait_for_connection(TickType_t timeout)
     /* Wait a maximum of timeout value for OOCD_START_FLAG to be set within
     the event group. Clear the bits before exiting. */
     EventBits_t bits = xEventGroupWaitBits(
-                s_event_group,      /* The event group being tested */
-                OOCD_START_FLAG,    /* The bit within the event group to wait for */
-                pdTRUE,             /* OOCD_START_FLAG should be cleared before returning */
-                pdFALSE,            /* Don't wait for bit, either bit will do */
-                timeout);           /* Wait a maximum of 5 mins for either bit to be set */
+                           s_event_group,      /* The event group being tested */
+                           OOCD_START_FLAG,    /* The bit within the event group to wait for */
+                           pdTRUE,             /* OOCD_START_FLAG should be cleared before returning */
+                           pdFALSE,            /* Don't wait for bit, either bit will do */
+                           timeout);           /* Wait a maximum of 5 mins for either bit to be set */
 
     return bits == 0 ? ESP_FAIL : ESP_OK;
 }
@@ -417,8 +421,9 @@ esp_err_t networking_wait_for_connection(TickType_t timeout)
 esp_err_t networking_set_wifi_mode(char new_mode)
 {
     esp_err_t ret = storage_nvs_write(WIFI_MODE_KEY, &new_mode, 1);
-    if (ret != ESP_OK)
+    if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to save WiFi mode");
+    }
 
     return ret;
 }
@@ -426,15 +431,17 @@ esp_err_t networking_set_wifi_mode(char new_mode)
 esp_err_t networking_get_wifi_mode(char *mode)
 {
     esp_err_t ret = storage_nvs_read(WIFI_MODE_KEY, mode, 1);
-    if (ret != ESP_OK)
+    if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get WiFi mode");
+    }
     return ret;
 }
 
 esp_err_t networking_init_wifi_mode(void)
 {
-    if (!storage_nvs_is_key_exist(WIFI_MODE_KEY))
+    if (!storage_nvs_is_key_exist(WIFI_MODE_KEY)) {
         return networking_set_wifi_mode(WIFI_AP_MODE);
+    }
 
     return ESP_OK;
 }
@@ -444,7 +451,8 @@ esp_err_t networking_init_connection(void)
     char wifi_mode;
     esp_err_t ret_nvs = networking_get_wifi_mode(&wifi_mode);
 
-        if (ret_nvs == ESP_OK && wifi_mode == WIFI_STA_MODE)
-            return networking_init_sta_mode();
+    if (ret_nvs == ESP_OK && wifi_mode == WIFI_STA_MODE) {
+        return networking_init_sta_mode();
+    }
     return networking_init_ap_mode();
 }

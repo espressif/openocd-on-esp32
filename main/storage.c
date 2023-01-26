@@ -15,10 +15,10 @@ esp_err_t storage_init_filesystem(void)
     ESP_LOGI(TAG, "Initializing SPIFFS");
 
     esp_vfs_spiffs_conf_t conf = {
-      .base_path = "/data",
-      .partition_label = NULL,
-      .max_files = 5,
-      .format_if_mount_failed = false
+        .base_path = "/data",
+        .partition_label = NULL,
+        .max_files = 5,
+        .format_if_mount_failed = false
     };
 
     // Use settings defined above to initialize and mount SPIFFS filesystem.
@@ -70,8 +70,9 @@ esp_err_t storage_nvs_read(const char *key, char *value, size_t size)
     ESP_RETURN_ON_ERROR(nvs_get_blob(my_handle, key, value, &n_bytes), TAG, "Failed to get blob \"%s\"", key);
     nvs_close(my_handle);
 
-    if (n_bytes != size)
+    if (n_bytes != size) {
         return ESP_FAIL;
+    }
 
     return ESP_OK;
 }
