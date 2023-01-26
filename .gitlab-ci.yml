@@ -41,8 +41,6 @@ build_latest:
 pre_commit:
   stage: pre_check
   image: espressif/idf:$ESP_IDF_TAG_LATEST
-  except:
-    - master
   script:
     - pip install pre-commit
     - git diff-tree --no-commit-id --name-only -r $CI_MERGE_REQUEST_TARGET_BRANCH_NAME -r $CI_COMMIT_SHA | xargs pre-commit run --files
