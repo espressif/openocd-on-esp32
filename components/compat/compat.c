@@ -8,19 +8,6 @@
 #include <netdb.h>
 #include <pwd.h>
 
-int chdir(const char *path)
-{
-    errno = ENOSYS;
-    return -1;
-}
-
-char *getcwd(char *buf, size_t size)
-{
-    snprintf(buf, size, "/");
-    buf[size - 1] = 0;
-    return buf;
-}
-
 mode_t umask(mode_t mask)
 {
     static mode_t old_mask = S_IWGRP | S_IWOTH;
