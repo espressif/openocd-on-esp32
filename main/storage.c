@@ -1,3 +1,7 @@
+#include <dirent.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "nvs_flash.h"
 #include "esp_log.h"
 #include "esp_check.h"
@@ -115,4 +119,84 @@ size_t storage_nvs_get_value_length(const char *key)
 bool storage_nvs_is_key_exist(const char *key)
 {
     return storage_nvs_get_value_length(key) > 0;
+}
+
+esp_err_t storage_nvs_erase_everything(void)
+{
+    return nvs_flash_erase();
+}
+
+static bool will_be_filtered(const char *file_name)
+{
+    const char *filtered_files[] = {"esp_common.cfg", "xtensa-core-esp32"};
+
+    for (int i = 0; i < sizeof(filtered_files) / sizeof(char *); i++) {
+        if (strstr(file_name, filtered_files[i]) != NULL) {
+            return true;
+        }
+    }
+    return false;
+}
+
+char *storage_get_config_files(void)
+{
+    DIR *d;
+    struct dirent *dir;
+    char *str = NULL;
+
+    d = opendir("/data/target");
+    if (!d) {
+        ESP_LOGE(TAG, "Could not open the directory");
+        return NULL;
+    }
+
+    while ((dir = readdir(d)) != NULL) {
+        if (str == NULL) {
+            str = (char *) calloc(sizeof(dir->d_name), sizeof(char));
+            if (!str) {
+                ESP_LOGE(TAG, "Allocation error during fetch config file names");
+                return NULL;
+            }
+            strcpy(str, dir->d_name);
+        } else {
+            if (!will_be_filtered(dir->d_name)) {
+                str = strcat(str, "\n");
+                str = strcat(str, dir->d_name);
+            }
+        }
+    }
+    closedir(d);
+
+    return str;
+}
+
+esp_err_t storage_nvs_read_param(char *key, char **value)
+{
+    if (!key || !value) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    /* First read length of the config string */
+    size_t len = storage_nvs_get_value_length(key);
+    if (len == 0) {
+        return ESP_FAIL;
+    }
+
+    /* allocate memory for the null terminated string */
+    char *ptr = (char *)calloc(len + 1, sizeof(char));
+    if (!ptr) {
+        ESP_LOGE(TAG, "Failed to allocate memory");
+        return ESP_FAIL;
+    }
+
+    esp_err_t ret_nvs = storage_nvs_read(key, ptr, len);
+    if (ret_nvs != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to get %s command", key);
+        free(ptr);
+        return ESP_FAIL;
+    }
+
+    *value = ptr;
+
+    return ESP_OK;
 }

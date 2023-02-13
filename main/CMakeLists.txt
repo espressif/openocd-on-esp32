@@ -1,7 +1,12 @@
 set(sources
     main.c
-    networking.c
     storage.c
+    ui/ui_events.c
+    ui/ui_helpers.c
+    ui/ui.c
+    network/manual_config.c
+    network/provisioning.c
+    network/web_server.c
 )
 
 set(dependencies
@@ -18,6 +23,7 @@ set(dependencies
     jimtcl
     compat
     platform_include
+    wifi_provisioning
 )
 
 idf_component_register(

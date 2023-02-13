@@ -3,12 +3,27 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "nvs_flash.h"
+#include "esp_check.h"
 #include "esp_vfs_dev.h"
 #include "driver/uart.h"
+#include "freertos/event_groups.h"
+
+#include "sdkconfig.h"
 
 #include "storage.h"
-#include "networking.h"
 #include "openocd.h"
+#if CONFIG_CONN_WEB_SERVER
+const char connection_type  = '0';
+#include "network/web_server.h"
+#endif
+#if CONFIG_CONN_PROV
+const char connection_type = '1';
+#include "network/provisioning.h"
+#endif
+#if CONFIG_CONN_MANUAL
+const char connection_type = '2';
+#include "network/manual_config.h"
+#endif
 
 static const char *TAG = "main";
 
@@ -46,50 +61,30 @@ static void init_console(void)
     esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
 }
 
-esp_err_t read_oocd_param(char *key, char **value)
-{
-    if (!key || !value) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    /* First read length of the config string */
-    size_t len = storage_nvs_get_value_length(key);
-    if (len == 0) {
-        return ESP_FAIL;
-    }
-
-    /* allocate memory for the null terminated string */
-    char *ptr = (char *)calloc(len + 1, sizeof(char));
-    if (!ptr) {
-        ESP_LOGE(TAG, "Failed to allocate memory");
-        return ESP_FAIL;
-    }
-
-    esp_err_t ret_nvs = storage_nvs_read(key, ptr, len);
-    if (ret_nvs != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to get %s command", key);
-        free(ptr);
-        return ESP_FAIL;
-    }
-
-    *value = ptr;
-
-    return ESP_OK;
-}
-
 void run_openocd()
 {
     setenv("OPENOCD_SCRIPTS", "/data", 1);
     char *argv[10] = {
         "openocd",
         "-c", "bindto 0.0.0.0",
-        "-f", "interface/esp32_gpio.cfg"
     };
-    /* Constant OpenOCD parameters takes 5 index */
-    int argc = 5;
+    /* Constant OpenOCD parameters takes 3 index */
+    int argc = 3;
+
+    char *param = NULL;
+    int ret_nvs = storage_nvs_read_param(OOCD_C_PARAM_KEY, &param);
+    if (ret_nvs != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to get --command, -c parameter");
+    } else if (param != NULL) {
+        argv[argc++] = "-c";
+        argv[argc++] = param;
+    }
 
     argv[argc++] = "-f";
-    int ret_nvs = read_oocd_param(OOCD_F_PARAM_KEY, &argv[argc]);
+    argv[argc++] = "interface/esp32_gpio.cfg";
+
+    argv[argc++] = "-f";
+    ret_nvs = storage_nvs_read_param(OOCD_F_PARAM_KEY, &argv[argc]);
     if (ret_nvs != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get --file, -f parameter.");
         return;
@@ -99,16 +94,7 @@ void run_openocd()
         return;
     }
 
-    char *param = NULL;
-    ret_nvs = read_oocd_param(OOCD_C_PARAM_KEY, &param);
-    if (ret_nvs != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to get --command, -c parameter");
-    } else if (param != NULL) {
-        argv[argc++] = "-c";
-        argv[argc++] = param;
-    }
-
-    ret_nvs = read_oocd_param(OOCD_D_PARAM_KEY, &param);
+    ret_nvs = storage_nvs_read_param(OOCD_D_PARAM_KEY, &param);
     if (ret_nvs != ESP_OK) {
         ESP_LOGW(TAG, "Failed to get --debug, -d parameter");
     } else if (param != NULL) {
@@ -118,7 +104,7 @@ void run_openocd()
     int ret = openocd_main(argc, (char **)argv);
     ESP_LOGI(TAG, "openocd has finished, exit code %d", ret);
 
-    free(argv[6]);
+    free(argv[4]);
     if (argc > 6) {
         free(argv[8]);
     }
@@ -137,7 +123,25 @@ void idf_init(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 }
 
-esp_err_t app_param_init(void)
+static void wait_for_connection(TickType_t timeout)
+{
+    /* Wait a maximum of timeout value for OOCD_START_FLAG to be set within
+    the event group. Clear the bits before exiting. */
+    EventBits_t bits = xEventGroupWaitBits(
+                           s_event_group,      /* The event group being tested */
+                           OOCD_START_FLAG,    /* The bit within the event group to wait for */
+                           pdTRUE,             /* OOCD_START_FLAG should be cleared before returning */
+                           pdFALSE,            /* Don't wait for bit, either bit will do */
+                           timeout);           /* Wait a maximum of 5 mins for either bit to be set */
+
+    if (bits == 0) {
+        ESP_LOGE(TAG, "WiFi credentials has not entered in %d seconds. Restarting...", (timeout / 1000));
+        esp_restart();
+    }
+}
+
+#if CONFIG_CONN_PROV || CONFIG_CONN_WEB_SERVER
+static esp_err_t app_param_init(void)
 {
     esp_err_t ret = ESP_OK;
     const char *default_f_param = "target/esp32.cfg";
@@ -150,14 +154,30 @@ esp_err_t app_param_init(void)
         }
     }
 
-    return networking_init_wifi_mode();
+    return ESP_OK;
 }
+#endif /* CONFIG_CONN_PROV || CONFIG_CONN_WEB_SERVER */
 
-esp_err_t wait_for_connection(TickType_t timeout)
+esp_err_t check_connection_config(void)
 {
-    if (networking_wait_for_connection(timeout) != ESP_OK) {
-        ESP_LOGE(TAG, "WiFi credentials has not entered in %d seconds. Restarting...", (timeout / 1000));
-        esp_restart();
+    esp_err_t ret = ESP_OK;
+    char val = 0;
+    if (!storage_nvs_is_key_exist(CONNECTION_TYPE_KEY)) {
+        ESP_RETURN_ON_ERROR(storage_nvs_write(CONNECTION_TYPE_KEY, &connection_type, 1), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    } else {
+        ret = storage_nvs_read(CONNECTION_TYPE_KEY, &val, 1);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to read connection input method");
+            return ESP_FAIL;
+        }
+        if (val != connection_type) {
+#if CONFIG_CONN_WEB_SERVER || CONFIG_CONN_PROV
+            reset_connection_config();
+#endif
+            ESP_RETURN_ON_ERROR(storage_nvs_write(CONNECTION_TYPE_KEY, &connection_type, 1), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+            ESP_LOGW(TAG, "Old WiFi connection method cleanup done. Restarting...");
+            esp_restart();
+        }
     }
     return ESP_OK;
 }
@@ -165,9 +185,17 @@ esp_err_t wait_for_connection(TickType_t timeout)
 void app_main(void)
 {
     idf_init();
+    ESP_ERROR_CHECK(check_connection_config());
+#if CONFIG_CONN_WEB_SERVER
     ESP_ERROR_CHECK(app_param_init());
-    ESP_ERROR_CHECK(networking_init_connection());
-    ESP_ERROR_CHECK(networking_start_server());
+    ESP_ERROR_CHECK(web_server_init());
+#elif CONFIG_CONN_PROV
+    ESP_ERROR_CHECK(app_param_init());
+    ESP_ERROR_CHECK(provisioning_init());
+#else
+    ESP_ERROR_CHECK(manual_config_init());
+#endif
+
     wait_for_connection(30000 / portTICK_PERIOD_MS);
 
     run_openocd();
