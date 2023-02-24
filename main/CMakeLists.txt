@@ -67,17 +67,17 @@ if (NOT OPENOCD_EXECUTABLE)
 else()
     message(STATUS "openocd-esp32 found in " ${OPENOCD_EXECUTABLE})
     set(app_bin ${CMAKE_PROJECT_NAME}.bin)
-    set(OPENOCD_CONFIG board/esp32s3-ftdi.cfg)
+    set(OPENOCD_CONFIG board/esp32s3-builtin.cfg)
     # run "cmake --build build -t jtag-flasher-full"
     add_custom_target(jtag-flasher-full
         DEPENDS ${CMAKE_BINARY_DIR}/${app_bin}
         COMMAND ${OPENOCD_EXECUTABLE} -s $ENV{OPENOCD_SCRIPTS} -f ${OPENOCD_CONFIG}
-        --command "program_esp_bins ${CMAKE_BINARY_DIR} flasher_args.json verify reset exit"
+        --command "program_esp_bins ${CMAKE_BINARY_DIR} flasher_args.json compress verify reset exit"
     )
     # run "cmake --build build -t jtag-flasher"
     add_custom_target(jtag-flasher
         DEPENDS ${CMAKE_BINARY_DIR}/${app_bin}
         COMMAND ${OPENOCD_EXECUTABLE} -s $ENV{OPENOCD_SCRIPTS} -f ${OPENOCD_CONFIG}
-        --command "program_esp ${CMAKE_BINARY_DIR}/${app_bin} 0x10000 verify reset exit"
+        --command "program_esp ${CMAKE_BINARY_DIR}/${app_bin} 0x10000 compress verify reset exit"
     )
 endif()
