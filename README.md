@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- ESP32S3 board with PSRAM. This board will act as a debugger.
+- ESP32S3 board with PSRAM. This board will act as a debugger. Make sure to adjust Flash and PSRAM spi modes (DIO, QIO, OPI) from the menuconfig.
 - ESP32 target board, flashed e.g. with blink example.
 - Connect GPIOs to the debugger board to the target board:
 
@@ -19,23 +19,27 @@ If necessary, the master pins can be adjusted at run time using `esp32_gpio_jtag
 
 sets the configuration shown above. The default pins are set in `interface/esp32_gpio.cfg` file (in the OpenOCD submodule).
 
+- Connect a led to see the JTAG tx/rx activity (optional)
+
+  If a led is connected to one of the GPIO pins, it can be activated with  `esp32_gpio_blink_num <led_pin_num>` OpenOCD command inside `interface/esp32_gpio.cfg`
+
 ## Build and flash
 
 1. Get the submodules: `git submodule --update --init --recursive`.
 
 2. Configure Wi-Fi SSID and password in menuconfig.
 
-3. Run `idf.py flash monitor` to build and flash the application and the SPIFFS filesystem image (generated at build time). When flashing again, use `idf.py app-flash` to only flash the application.
+3. Run `idf.py flash monitor` to build and flash the application and the FATFS filesystem image (generated at build time). When flashing again, use `idf.py app-flash` to only flash the application.
 
 ## Flash from jtag
 
 With the help of OpenOCD, it is also possible to load application from the jtag. During the cmake configuration phase, openocd binary is beging searched in the installed idf tools directory. If the binary is found, 2 commands will be ready to run;
 
-1. Use `cmake --build build -t jtag-flasher-full`  to flash the application and the SPIFFS filesystem
+1. Use `cmake --build build -t jtag-flasher-full`  to flash the application and the FATFS filesystem
 
 2. Use `cmake --build build -t jtag-flasher` to only flash the application to the specific locatioon. Which is 0x10000 by default.
 
-`board/esp32s3-ftdi.cfg` is used as an OpenOCD config file.
+`board/esp32s3-builtin.cfg` is used as an OpenOCD config file by default.
 
 ## Run
 
@@ -108,6 +112,6 @@ The last saved Wi-Fi and OpenOCD configuration will be used in every reset. Wifi
 
 For the OpenOCD configuration, there are three parameters, which are --file/-f, --command/-c and --debug/-d. If we detail them:
 
-- --file/-f: expects only connected target config file name, e.g. `target/esp32s2.cfg`. The default value of this parameter is "target/esp32.cfg" and it cannot be empty in the OpenOCD configuration. The interface config file is set to statically `interface/esp32_gpio.cfg`
-- --command/-c: takes command arguments. e.g. `init; reset halt`
-- --debug/-d: takes debug verbosity value e.g. `3`
+- `--file/-f` expects only connected target config file name, e.g. `target/esp32s2.cfg`. The default value of this parameter is "target/esp32.cfg" and it cannot be empty in the OpenOCD configuration. The interface config file is set to statically `interface/esp32_gpio.cfg`
+- `--command/-c` takes command arguments. e.g. `init; reset halt`
+- `--debug/-d` takes debug verbosity value e.g. `3`

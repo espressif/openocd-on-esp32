@@ -23,7 +23,7 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     ExternalProject_Add(jimtcl_build
         PREFIX ${COMPONENT_DIR}
         SOURCE_DIR ${COMPONENT_DIR}/jimtcl
-        CONFIGURE_COMMAND ./configure --disable-install-jim --with-ext=json --host=${host_prefix} "CFLAGS=${opts}"
+        CONFIGURE_COMMAND ./configure --disable-install-jim --with-ext=json --disable-ssl --host=${host_prefix} "CFLAGS=${opts}"
         BUILD_IN_SOURCE 1
         # These two options are set so that Ninja immediately outputs
         # the subproject build to the terminal. Otherwise it looks like the
