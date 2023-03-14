@@ -4,7 +4,7 @@ menu "OpenOCD-on-ESP32 Configuration"
         bool "Config input method"
         default CONN_PROV
         help
-            Wi-Fi credentials can be entered via Provisoning, Web Server or Menuconfig. Choose any one.
+            Wi-Fi credentials can be entered via Provisoning, Web Server or Menuconfig. Choose anyone.
 
         config CONN_PROV
             bool "Change WiFi settings with Provisioning"

@@ -1,12 +1,9 @@
 set(sources
     main.c
     storage.c
+    networking.c
     ui/ui_events.c
-    ui/ui_helpers.c
     ui/ui.c
-    network/manual_config.c
-    network/provisioning.c
-    network/web_server.c
 )
 
 set(dependencies

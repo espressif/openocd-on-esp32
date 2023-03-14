@@ -14,12 +14,12 @@
 
 static const char *TAG = "ui";
 
-char *targets_str;
-char debug_level_value = 2;
-bool dual_core_option = true;
-bool flash_support_option = true;
-int rtos_type_value = 0;
-int selected_target = 0;
+static char *s_targets_str;
+static bool s_dual_core_option = true;
+static bool s_flash_support_option = true;
+static int s_debug_level_value = 2;
+static int s_rtos_type_value = 0;
+static int s_selected_target = 0;
 
 static char *get_target_name_from_index(int index);
 static int get_index_from_target_name(char *target_name);
@@ -36,35 +36,35 @@ void reset_button_handler(lv_event_t *e)
 void target_select_dropdown_handler(lv_event_t *e)
 {
     lv_obj_t *obj = lv_event_get_target(e);
-    selected_target = lv_dropdown_get_selected(obj);
+    s_selected_target = lv_dropdown_get_selected(obj);
 
-    char *target_str = get_target_name_from_index(selected_target);
-    if (!target_str) {
+    char *target_name = get_target_name_from_index(s_selected_target);
+    if (!target_name) {
         ESP_LOGE(TAG, "Error happened during target name fetch operation");
-        return;
+        assert(false);
     }
-    if (is_single_core(target_str)) {
+    if (is_single_core(target_name)) {
         single_core_ui_setup();
     } else {
         dual_core_ui_setup();
     }
-    free(target_str);
+    free(target_name);
 }
 
 void run_openocd_button_handler(lv_event_t *e)
 {
-    char *config_name = get_target_name_from_index(selected_target);
-    if (!config_name) {
+    char *target_name = get_target_name_from_index(s_selected_target);
+    if (!target_name) {
         ESP_LOGE(TAG, "Error happened during target name fetch operation");
-        return;
+        assert(false);
     }
-    char *file_param = (char *)calloc(strlen(TARGET_PATH_PRELIM) + strlen(config_name) + 1, sizeof(char));
+    char *file_param = (char *)calloc(strlen(TARGET_PATH_PRELIM) + strlen(target_name) + 1, sizeof(char));
     if (!file_param) {
         ESP_LOGE(TAG, "Allocation error");
-        return;
+        assert(false);
     }
     strcpy(file_param, TARGET_PATH_PRELIM);
-    strcpy(file_param + strlen(TARGET_PATH_PRELIM), config_name);
+    strcpy(file_param + strlen(TARGET_PATH_PRELIM), target_name);
 
     int ret = storage_nvs_write(OOCD_F_PARAM_KEY, file_param, strlen(file_param));
     if (ret != ESP_OK) {
@@ -73,44 +73,44 @@ void run_openocd_button_handler(lv_event_t *e)
     free(file_param);
 
     char d_param_str[4] = {0};
-    sprintf(d_param_str, "-d%c", (int)debug_level_value + 48);
+    snprintf(d_param_str, sizeof(d_param_str), "-d%d", (int)s_debug_level_value);
     ret = storage_nvs_write(OOCD_D_PARAM_KEY, d_param_str, strlen(d_param_str));
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to save --debug, -d parameter");
     }
 
-    char c_param_str[75] = {0};
-    sprintf(c_param_str, "set ESP_FLASH_SIZE %s; set ESP_RTOS %s; ", (flash_support_option == false ? "0" : "auto"),
-            (rtos_type_value == 0 ? "FreeRTOS" : rtos_type_value == 1 ? "NuttX" : "none"));
+    char c_param[75] = {0};
+    snprintf(c_param, sizeof(c_param), "set ESP_FLASH_SIZE %s; set ESP_RTOS %s; ", (s_flash_support_option == false ? "0" : "auto"),
+             (s_rtos_type_value == 0 ? "FreeRTOS" : s_rtos_type_value == 1 ? "NuttX" : "none"));
 
-    if (!is_single_core(config_name)) {
-        if (strcmp(config_name, "esp32s3.cfg") == 0) {
-            sprintf(c_param_str + strlen(c_param_str), "set %s %s; ", ("ESP32_S3_ONLYCPU"), (dual_core_option == false ? "1" : "2"));
+    if (!is_single_core(target_name)) {
+        if (strcmp(target_name, "esp32s3.cfg") == 0) {
+            snprintf(c_param + strlen(c_param), sizeof(c_param) - strlen(c_param), "set %s %s; ", ("ESP32_S3_ONLYCPU"), (s_dual_core_option == false ? "1" : "2"));
         } else {
-            sprintf(c_param_str + strlen(c_param_str), "set %s %s; ", ("ESP32_ONLYCPU"), (dual_core_option == false ? "1" : "3"));
+            snprintf(c_param + strlen(c_param), sizeof(c_param) - strlen(c_param), "set %s %s; ", ("ESP32_ONLYCPU"), (s_dual_core_option == false ? "1" : "3"));
         }
     }
-    free(config_name);
+    free(target_name);
 
-    ret = storage_nvs_write(OOCD_C_PARAM_KEY, c_param_str, strlen(c_param_str));
+    ret = storage_nvs_write(OOCD_C_PARAM_KEY, c_param, strlen(c_param));
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to save --command, -c parameter");
     }
 
-    char param_to_write = dual_core_option == true ? '1' : '0';
-    ret = storage_nvs_write(DUAL_CORE_KEY, &param_to_write, 1);
+    char option = s_dual_core_option == true ? '1' : '0';
+    ret = storage_nvs_write(DUAL_CORE_KEY, &option, 1);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to save dual core option");
     }
 
-    param_to_write = flash_support_option == true ? '1' : '0';
-    ret = storage_nvs_write(FLASH_SUPPORT_KEY, &param_to_write, 1);
+    option = s_flash_support_option == true ? '1' : '0';
+    ret = storage_nvs_write(FLASH_SUPPORT_KEY, &option, 1);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to save flash support option");
     }
 
-    param_to_write = rtos_type_value;
-    ret = storage_nvs_write(RTOS_KEY, &param_to_write, 1);
+    option = s_rtos_type_value;
+    ret = storage_nvs_write(RTOS_KEY, &option, 1);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to save rtos option");
     }
@@ -121,24 +121,24 @@ void run_openocd_button_handler(lv_event_t *e)
 void rtos_support_dropdown_handler(lv_event_t *e)
 {
     lv_obj_t *obj = lv_event_get_target(e);
-    rtos_type_value = lv_dropdown_get_selected(obj);
+    s_rtos_type_value = lv_dropdown_get_selected(obj);
 }
 
 void flash_support_checkbox_handler(lv_event_t *e)
 {
-    flash_support_option = !flash_support_option;
+    s_flash_support_option = !s_flash_support_option;
 }
 
 void dual_core_checkbox_handler(lv_event_t *e)
 {
-    dual_core_option = !dual_core_option;
+    s_dual_core_option = !s_dual_core_option;
 }
 
 void debug_level_dropdown_handler(lv_event_t *e)
 {
     lv_obj_t *obj = lv_event_get_target(e);
     int index = lv_dropdown_get_selected(obj);
-    debug_level_value = index + 2;
+    s_debug_level_value = index + 2;
 }
 
 static void single_core_ui_setup()
@@ -146,7 +146,7 @@ static void single_core_ui_setup()
     bsp_display_lock(0);
     lv_obj_clear_state(ui_dualcorecheckbox, LV_STATE_CHECKED);
     lv_obj_add_state(ui_dualcorecheckbox, LV_STATE_DISABLED);
-    dual_core_option = false;
+    s_dual_core_option = false;
     bsp_display_unlock();
 }
 
@@ -155,7 +155,7 @@ static void dual_core_ui_setup()
     bsp_display_lock(0);
     lv_obj_clear_state(ui_dualcorecheckbox, LV_STATE_DISABLED);
     lv_obj_add_state(ui_dualcorecheckbox, LV_STATE_CHECKED);
-    dual_core_option = true;
+    s_dual_core_option = true;
     bsp_display_unlock();
 }
 
@@ -182,6 +182,9 @@ void ui_load_config_screen()
 {
     bsp_display_lock(0);
     lv_disp_load_scr(ui_ConfigScreen);
+    lv_obj_remove_event_cb(ui_ConfigScreen, ui_event_ConfigScreen);
+    lv_label_set_text(ui_leftarrowtext, "");
+    lv_obj_clean(ui_ConnectionScreen);
     bsp_display_unlock();
 }
 
@@ -201,19 +204,19 @@ void ui_clear_screen(void)
 
 static char *get_target_names()
 {
-    targets_str = storage_get_config_files();
-    return targets_str;
+    s_targets_str = storage_get_config_files();
+    return s_targets_str;
 }
 
 static char *get_target_name_from_index(int index)
 {
-    char *targets = (char *)calloc(strlen(targets_str) + 1, sizeof(char));
+    char *targets = (char *)calloc(strlen(s_targets_str) + 1, sizeof(char));
     if (!targets) {
         ESP_LOGE(TAG, "Allocation error");
         return NULL;
     }
 
-    strcpy(targets, targets_str);
+    strcpy(targets, s_targets_str);
 
     char delimiter = '\n';
     int i = 0;
@@ -226,6 +229,7 @@ static char *get_target_name_from_index(int index)
 
     char *ret_str = (char *)calloc(strlen(str) + 1, sizeof(char));
     if (!ret_str) {
+        free(targets);
         ESP_LOGE(TAG, "Allocation error");
         return NULL;
     }
@@ -238,22 +242,21 @@ static char *get_target_name_from_index(int index)
 
 static int get_index_from_target_name(char *target_name)
 {
-    char *targets = (char *)calloc(strlen(targets_str) + 1, sizeof(char));
+    char *targets = (char *)calloc(strlen(s_targets_str) + 1, sizeof(char));
     if (!targets) {
         ESP_LOGE(TAG, "Allocation error");
         return -1;
     }
     int i = 0;
-    char delimiter = '\n';
-    strcpy(targets, targets_str);
-
-    char *str = strtok(targets, &delimiter);
+    char *delimiter = "\n";
+    strcpy(targets, s_targets_str);
+    char *str = strtok(targets, delimiter);
     while (str != NULL)  {
         if (strcmp(target_name, str) == 0) {
             free(targets);
             return i;
         }
-        str = strtok(NULL, &delimiter);
+        str = strtok(NULL, delimiter);
         i++;
     }
 
@@ -264,13 +267,12 @@ static int get_index_from_target_name(char *target_name)
 static void set_previous_values()
 {
     char *param;
-    int index;
     int ret_nvs = storage_nvs_read_param(OOCD_F_PARAM_KEY, &param);
     if (ret_nvs == ESP_OK) {
-        index = get_index_from_target_name(param + strlen(TARGET_PATH_PRELIM));
+        int index = get_index_from_target_name(param + strlen(TARGET_PATH_PRELIM));
         if (index != -1) {
             lv_dropdown_set_selected(ui_targetselectdropdown, index);
-            selected_target = index;
+            s_selected_target = index;
             if (is_single_core(param + strlen(TARGET_PATH_PRELIM))) {
                 single_core_ui_setup();
             } else {
@@ -283,39 +285,35 @@ static void set_previous_values()
     char option;
     ret_nvs = storage_nvs_read(DUAL_CORE_KEY, &option, 1);
     if (ret_nvs == ESP_OK) {
-        lv_obj_clear_state(ui_dualcorecheckbox, LV_STATE_CHECKED);
-        if (option == '1') {
-            lv_obj_add_state(ui_dualcorecheckbox, LV_STATE_CHECKED);
-            dual_core_option = true;
-        } else {
+        s_dual_core_option = true;
+        if (option == '0') {
+            lv_obj_clear_state(ui_dualcorecheckbox, LV_STATE_CHECKED);
             lv_obj_add_state(ui_dualcorecheckbox, LV_STATE_DEFAULT);
-            dual_core_option = false;
+            s_dual_core_option = false;
         }
     }
 
     ret_nvs = storage_nvs_read(FLASH_SUPPORT_KEY, &option, 1);
     if (ret_nvs == ESP_OK) {
-        lv_obj_clear_state(ui_flashsupportcheckbox, LV_STATE_CHECKED);
-        if (option == '1') {
-            lv_obj_add_state(ui_flashsupportcheckbox, LV_STATE_CHECKED);
-            flash_support_option = true;
-        } else {
+        s_flash_support_option = true;
+        if (option == '0') {
+            lv_obj_clear_state(ui_flashsupportcheckbox, LV_STATE_CHECKED);
             lv_obj_add_state(ui_flashsupportcheckbox, LV_STATE_DEFAULT);
-            flash_support_option = false;
+            s_flash_support_option = false;
         }
     }
 
     ret_nvs = storage_nvs_read(RTOS_KEY, &option, 1);
     if (ret_nvs == ESP_OK) {
         lv_dropdown_set_selected(ui_rtosdropdown, option);
-        rtos_type_value = option;
+        s_rtos_type_value = option;
     }
 
     ret_nvs = storage_nvs_read_param(OOCD_D_PARAM_KEY, &param);
     if (ret_nvs == ESP_OK) {
         int debug_lvl_val = param[strlen(param) - 1] - 48 - 2;
         lv_dropdown_set_selected(ui_debuglevelodropdown, debug_lvl_val);
-        debug_level_value = debug_lvl_val + 2;
+        s_debug_level_value = debug_lvl_val + 2;
     }
 }
 

@@ -4,7 +4,7 @@
         <tr><td>
             <h2>ESP-OOCD Configuration</h2>
         </td><td>
-        </tr> 
+        </tr>
         <tr>
             <table border="0">
                 <tr>
@@ -93,7 +93,7 @@
         var valid_credentials = 1;
         var forbidden_letters = ["?", "\"", "$", "[", "\\", "]", "+"];
         var forbidden_first_letters = ["!", "#", ";", " "];
-        
+
         if (ssid.length < 2 || ssid.length > 32) {
             alert("SSID on server is wrong!");
             valid_credentials = 0;
@@ -117,14 +117,14 @@
                 valid_credentials = 0;
             }
         }
-        
+
         if (valid_credentials) {
             console.log("Credentials are valid, lets send");
             document.getElementById("ssid").disabled = true;
             document.getElementById("password").disabled = true;
             document.getElementById("save").disabled = true;
             document.getElementById("reset").disabled = true;
-            
+
             var packet = ssid + "+" + pass ;
             var xhttp = new XMLHttpRequest();
             xhttp.onreadystatechange = function() {
@@ -146,13 +146,13 @@
             xhttp.send(packet);
         }
     }
-    
+
     function resetCredentials() {
         document.getElementById("ssid").disabled = true;
         document.getElementById("password").disabled = true;
         document.getElementById("save").disabled = true;
         document.getElementById("reset").disabled = true;
-        
+
         var xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function() {
             if (xhttp.readyState == 4) {
@@ -172,14 +172,15 @@
         xhttp.open("POST", "/reset_credentials", true);
         xhttp.send();
     }
-    
+
     function setOpenocdConfig() {
         var fCommand = document.getElementById("fCommand").value;
         var cCommand = document.getElementById("cCommand").value;
         var dCommand = document.getElementById("dCommand").value;
-        
+
         if (fCommand.length == 0) {
             alert("File parameter is not set!");
+            return;
         }
 
         document.getElementById("fCommand").disabled = true;

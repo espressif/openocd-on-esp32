@@ -12,17 +12,16 @@
 
 #include "storage.h"
 #include "openocd.h"
+#include "networking.h"
+
 #if CONFIG_CONN_WEB_SERVER
-const char connection_type  = '0';
-#include "network/web_server.h"
+static const char s_connection_type  = '0';
 #endif
 #if CONFIG_CONN_PROV
-const char connection_type = '1';
-#include "network/provisioning.h"
+static const char s_connection_type = '1';
 #endif
 #if CONFIG_CONN_MANUAL
-const char connection_type = '2';
-#include "network/manual_config.h"
+static const char s_connection_type = '2';
 #endif
 
 static const char *TAG = "main";
@@ -104,11 +103,14 @@ void run_openocd()
     int ret = openocd_main(argc, (char **)argv);
     ESP_LOGI(TAG, "openocd has finished, exit code %d", ret);
 
+    /* Free the OpenOCD command parameter */
     free(argv[4]);
     if (argc > 6) {
+        /* Free the OpenOCD file parameter */
         free(argv[8]);
     }
     if (argc > 8) {
+        /* Free the OpenOCD debug parameter */
         free(argv[9]);
     }
 }
@@ -123,30 +125,13 @@ void idf_init(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 }
 
-static void wait_for_connection(TickType_t timeout)
-{
-    /* Wait a maximum of timeout value for OOCD_START_FLAG to be set within
-    the event group. Clear the bits before exiting. */
-    EventBits_t bits = xEventGroupWaitBits(
-                           s_event_group,      /* The event group being tested */
-                           OOCD_START_FLAG,    /* The bit within the event group to wait for */
-                           pdTRUE,             /* OOCD_START_FLAG should be cleared before returning */
-                           pdFALSE,            /* Don't wait for bit, either bit will do */
-                           timeout);           /* Wait a maximum of 5 mins for either bit to be set */
-
-    if (bits == 0) {
-        ESP_LOGE(TAG, "WiFi credentials has not entered in %d seconds. Restarting...", (timeout / 1000));
-        esp_restart();
-    }
-}
-
 #if CONFIG_CONN_PROV || CONFIG_CONN_WEB_SERVER
 static esp_err_t app_param_init(void)
 {
     esp_err_t ret = ESP_OK;
-    const char *default_f_param = "target/esp32.cfg";
 
     if (!storage_nvs_is_key_exist(OOCD_F_PARAM_KEY)) {
+        const char *default_f_param = "target/esp32.cfg";
         ret = storage_nvs_write(OOCD_F_PARAM_KEY, default_f_param, strlen(default_f_param));
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to save default --file, -f command");
@@ -156,29 +141,71 @@ static esp_err_t app_param_init(void)
 
     return ESP_OK;
 }
-#endif /* CONFIG_CONN_PROV || CONFIG_CONN_WEB_SERVER */
+#else
+static esp_err_t app_param_init(void)
+{
+    esp_err_t ret = ESP_OK;
+
+    ret = storage_nvs_write(SSID_KEY, CONFIG_ESP_WIFI_SSID, SSID_LENGTH);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save ssid");
+        return ESP_FAIL;
+    }
+
+    ret = storage_nvs_write(PASSWORD_KEY, CONFIG_ESP_WIFI_PASSWORD, PASSWORD_LENGTH);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save password");
+        return ESP_FAIL;
+    }
+
+    char wifi_mode = WIFI_STA_MODE;
+    ret = storage_nvs_write(WIFI_MODE_KEY, &wifi_mode, 1);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save WiFi mode");
+    }
+
+    ret = storage_nvs_write(OOCD_F_PARAM_KEY, CONFIG_OPENOCD_F_PARAM, strlen(CONFIG_OPENOCD_F_PARAM));
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save default --file, -f command");
+        return ESP_FAIL;
+    }
+
+    ret = storage_nvs_write(OOCD_C_PARAM_KEY, CONFIG_OPENOCD_C_PARAM, strlen(CONFIG_OPENOCD_C_PARAM));
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save default --command, -c command");
+        return ESP_FAIL;
+    }
+
+    char d_param_str[4] = {0};
+    snprintf(d_param_str, sizeof(d_param_str), "-d%d", CONFIG_OPENOCD_D_PARAM);
+    ret = storage_nvs_write(OOCD_D_PARAM_KEY, d_param_str, strlen(d_param_str));
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save default --debug, -d command");
+        return ESP_FAIL;
+    }
+
+    return ESP_OK;
+}
+#endif /* CONFIG_CONN_PROV || CONFIG_CONN_WEB_SERVER  */
 
 esp_err_t check_connection_config(void)
 {
-    esp_err_t ret = ESP_OK;
-    char val = 0;
-    if (!storage_nvs_is_key_exist(CONNECTION_TYPE_KEY)) {
-        ESP_RETURN_ON_ERROR(storage_nvs_write(CONNECTION_TYPE_KEY, &connection_type, 1), TAG, "Failed at %s:%d", __FILE__, __LINE__);
-    } else {
-        ret = storage_nvs_read(CONNECTION_TYPE_KEY, &val, 1);
+    if (storage_nvs_is_key_exist(CONNECTION_TYPE_KEY)) {
+        char val = 0;
+        esp_err_t ret = storage_nvs_read(CONNECTION_TYPE_KEY, &val, 1);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to read connection input method");
             return ESP_FAIL;
         }
-        if (val != connection_type) {
-#if CONFIG_CONN_WEB_SERVER || CONFIG_CONN_PROV
+        if (val == s_connection_type) {
+            return ESP_OK;
+        } else {
             reset_connection_config();
-#endif
-            ESP_RETURN_ON_ERROR(storage_nvs_write(CONNECTION_TYPE_KEY, &connection_type, 1), TAG, "Failed at %s:%d", __FILE__, __LINE__);
             ESP_LOGW(TAG, "Old WiFi connection method cleanup done. Restarting...");
             esp_restart();
         }
     }
+    ESP_RETURN_ON_ERROR(storage_nvs_write(CONNECTION_TYPE_KEY, &s_connection_type, 1), TAG, "Failed at %s:%d", __FILE__, __LINE__);
     return ESP_OK;
 }
 
@@ -186,17 +213,8 @@ void app_main(void)
 {
     idf_init();
     ESP_ERROR_CHECK(check_connection_config());
-#if CONFIG_CONN_WEB_SERVER
     ESP_ERROR_CHECK(app_param_init());
-    ESP_ERROR_CHECK(web_server_init());
-#elif CONFIG_CONN_PROV
-    ESP_ERROR_CHECK(app_param_init());
-    ESP_ERROR_CHECK(provisioning_init());
-#else
-    ESP_ERROR_CHECK(manual_config_init());
-#endif
-
-    wait_for_connection(30000 / portTICK_PERIOD_MS);
+    ESP_ERROR_CHECK(networking_init());
 
     run_openocd();
     ESP_LOGW(TAG, "OpenOCD has finished. "

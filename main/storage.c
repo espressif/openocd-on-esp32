@@ -160,6 +160,19 @@ char *storage_get_config_files(void)
             strcpy(str, dir->d_name);
         } else {
             if (!will_be_filtered(dir->d_name)) {
+                int current_length = strlen(dir->d_name) + strlen(str) + 1 + 1;
+                if (current_length > sizeof(dir->d_name)) {
+                    char *tmp_str = (char *) calloc(current_length, sizeof(char));
+                    if (!tmp_str) {
+                        ESP_LOGE(TAG, "Allocation error");
+                        free(str);
+                        closedir(d);
+                        return NULL;
+                    }
+                    strcpy(tmp_str, str);
+                    free(str);
+                    str = tmp_str;
+                }
                 str = strcat(str, "\n");
                 str = strcat(str, dir->d_name);
             }
