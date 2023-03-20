@@ -13,16 +13,13 @@
 #include "storage.h"
 #include "openocd.h"
 #include "networking.h"
+#include "ui/ui.h"
 
-#if CONFIG_CONN_WEB_SERVER
-static const char s_connection_type  = '0';
-#endif
-#if CONFIG_CONN_PROV
+#if CONFIG_UI_ENABLE
 static const char s_connection_type = '1';
-#endif
-#if CONFIG_CONN_MANUAL
-static const char s_connection_type = '2';
-#endif
+#else
+static const char s_connection_type  = '0';
+#endif /* CONFIG_UI_ENABLE */
 
 static const char *TAG = "main";
 
@@ -60,8 +57,12 @@ static void init_console(void)
     esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
 }
 
-void run_openocd()
+void run_openocd(void)
 {
+    char *default_f_param = "target/esp32.cfg";
+    char *default_c_param = "set ESP_FLASH_SIZE auto; set ESP_RTOS FreeRTOS; set ESP32_ONLYCPU 3;";
+    char *default_d_param = "-d2";
+
     setenv("OPENOCD_SCRIPTS", "/data", 1);
     char *argv[10] = {
         "openocd",
@@ -71,11 +72,11 @@ void run_openocd()
     int argc = 3;
 
     char *param = NULL;
+    argv[argc++] = "-c";
     int ret_nvs = storage_nvs_read_param(OOCD_C_PARAM_KEY, &param);
     if (ret_nvs != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to get --command, -c parameter");
+        argv[argc++] = default_c_param;
     } else if (param != NULL) {
-        argv[argc++] = "-c";
         argv[argc++] = param;
     }
 
@@ -85,17 +86,15 @@ void run_openocd()
     argv[argc++] = "-f";
     ret_nvs = storage_nvs_read_param(OOCD_F_PARAM_KEY, &argv[argc]);
     if (ret_nvs != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get --file, -f parameter.");
-        return;
-    }
-    if (argv[argc++] == NULL) {
+        argv[argc++] = default_f_param;
+    } else if (argv[argc++] == NULL) {
         ESP_LOGE(TAG, "File parameter is NULL");
         return;
     }
 
     ret_nvs = storage_nvs_read_param(OOCD_D_PARAM_KEY, &param);
     if (ret_nvs != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to get --debug, -d parameter");
+        argv[argc++] = default_d_param;
     } else if (param != NULL) {
         argv[argc++] = param;
     }
@@ -125,69 +124,6 @@ void idf_init(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 }
 
-#if CONFIG_CONN_PROV || CONFIG_CONN_WEB_SERVER
-static esp_err_t app_param_init(void)
-{
-    esp_err_t ret = ESP_OK;
-
-    if (!storage_nvs_is_key_exist(OOCD_F_PARAM_KEY)) {
-        const char *default_f_param = "target/esp32.cfg";
-        ret = storage_nvs_write(OOCD_F_PARAM_KEY, default_f_param, strlen(default_f_param));
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to save default --file, -f command");
-            return ESP_FAIL;
-        }
-    }
-
-    return ESP_OK;
-}
-#else
-static esp_err_t app_param_init(void)
-{
-    esp_err_t ret = ESP_OK;
-
-    ret = storage_nvs_write(SSID_KEY, CONFIG_ESP_WIFI_SSID, SSID_LENGTH);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to save ssid");
-        return ESP_FAIL;
-    }
-
-    ret = storage_nvs_write(PASSWORD_KEY, CONFIG_ESP_WIFI_PASSWORD, PASSWORD_LENGTH);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to save password");
-        return ESP_FAIL;
-    }
-
-    char wifi_mode = WIFI_STA_MODE;
-    ret = storage_nvs_write(WIFI_MODE_KEY, &wifi_mode, 1);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to save WiFi mode");
-    }
-
-    ret = storage_nvs_write(OOCD_F_PARAM_KEY, CONFIG_OPENOCD_F_PARAM, strlen(CONFIG_OPENOCD_F_PARAM));
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to save default --file, -f command");
-        return ESP_FAIL;
-    }
-
-    ret = storage_nvs_write(OOCD_C_PARAM_KEY, CONFIG_OPENOCD_C_PARAM, strlen(CONFIG_OPENOCD_C_PARAM));
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to save default --command, -c command");
-        return ESP_FAIL;
-    }
-
-    char d_param_str[4] = {0};
-    snprintf(d_param_str, sizeof(d_param_str), "-d%d", CONFIG_OPENOCD_D_PARAM);
-    ret = storage_nvs_write(OOCD_D_PARAM_KEY, d_param_str, strlen(d_param_str));
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to save default --debug, -d command");
-        return ESP_FAIL;
-    }
-
-    return ESP_OK;
-}
-#endif /* CONFIG_CONN_PROV || CONFIG_CONN_WEB_SERVER  */
-
 esp_err_t check_connection_config(void)
 {
     if (storage_nvs_is_key_exist(CONNECTION_TYPE_KEY)) {
@@ -200,7 +136,7 @@ esp_err_t check_connection_config(void)
         if (val == s_connection_type) {
             return ESP_OK;
         } else {
-            reset_connection_config();
+            networking_reset_connection_config();
             ESP_LOGW(TAG, "Old WiFi connection method cleanup done. Restarting...");
             esp_restart();
         }
@@ -212,8 +148,10 @@ esp_err_t check_connection_config(void)
 void app_main(void)
 {
     idf_init();
+#if CONFIG_UI_ENABLE
+    ui_hw_init();
+#endif /* CONFIG_UI_ENABLE */
     ESP_ERROR_CHECK(check_connection_config());
-    ESP_ERROR_CHECK(app_param_init());
     ESP_ERROR_CHECK(networking_init());
 
     run_openocd();

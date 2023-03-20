@@ -2,6 +2,7 @@ set(sources
     main.c
     storage.c
     networking.c
+    web_server.c
     ui/ui_events.c
     ui/ui.c
 )
@@ -21,6 +22,7 @@ set(dependencies
     compat
     platform_include
     wifi_provisioning
+    json
 )
 
 idf_component_register(
@@ -61,7 +63,7 @@ target_link_libraries(${COMPONENT_LIB} PUBLIC openocd)
 
 include(${OPENOCD_DIR}/cmake/CreateTCL-lite.cmake)
 
-fatfs_create_rawflash_image(storage openocd/tcl-lite FLASH_IN_PROJECT)
+fatfs_create_spiflash_image(storage openocd/tcl-lite FLASH_IN_PROJECT)
 
 # custom target to load binaries from jtag.
 find_program(OPENOCD_EXECUTABLE "openocd" PATHS "openocd-esp32/bin")

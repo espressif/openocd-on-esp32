@@ -51,26 +51,52 @@
                 </tr>
                 <tr>
                     <td>
-                        <label for="config">--file/-f:</label>
+                        <label for="fCommand">--file/-f:</label>
                     </td>
                     <td>
-                        <input id="fCommand" type="text" style="width:100%;">
+                        <select name="fCommand" id="fCommand" onchange="fileParamOnChange()">
+                        </select>
                     </td>
                 </tr>
                 <tr>
                     <td>
-                        <label for="config">--command/-c:</label>
+                        <label for="cCommand">--command/-c:</label>
                     </td>
                     <td>
                         <input id="cCommand" type="text" style="width:100%;">
                     </td>
                 </tr>
                 <tr>
+                    <td></td>
                     <td>
-                        <label for="config">--debug/-d:</label>
+                        <input type="checkbox" id="dualCore" name="dualCore" checked>
+                        <label for="dualCore"> Dual Core</label><br>
+                        <input type="checkbox" id="flashSupport" name="flashSupport" checked>
+                        <label for="flashSupport"> Flash Support</label><br>
+                    </td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td>
+                        <label for="rtos">RTOS:</label>
+
+                        <select name="rtos" id="rtos">
+                          <option value="freeRtos">FreeRTOS</option>
+                          <option value="nuttx">NuttX</option>
+                          <option value="none">none</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="dCommand">--debug/-d:</label>
                     </td>
                     <td>
-                        <input id="dCommand" type="text" style="width:100%;">
+                        <select name="dCommand" id="dCommand">
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
                     </td>
                 </tr>
                 <tr>
@@ -81,13 +107,32 @@
                     <button id="set" type="button" onclick="setOpenocdConfig()">Set</button>
                 </td>
             </tr>
+            <tr>
+                <td>
+                </td>
+                <td>
+                    <div style="display:flex; justify-content:flex-end; width:105%; overflow: hidden; align-self: flex-end;" class="float-right">
+                    <button id="set" type="button" onclick="setOpenocdConfig(true)"> Set All</button>
+                </td>
+            </tr>
             </table>
         </td>
     </tr>
 </table>
-</body></html>
+</body>
 <script>
-    function saveCredentials() {
+    function fileParamOnChange() {
+        var dualCoreConfigs= ["target/esp32.cfg", "target/esp32s3.cfg"]
+        var fParamStr = document.getElementById("fCommand").options[fCommand.selectedIndex].value;
+        var dualCoreFlag = 0;
+        dualCoreConfigs.forEach(value => dualCoreFlag = (value.includes(fParamStr) == true ? 1 : dualCoreFlag));
+        document.getElementById("dualCore").disabled = (dualCoreFlag == 0 ? true : false);
+        if (!dualCoreFlag) {
+            document.getElementById("dualCore").checked = false;
+        }
+    }
+
+    function checkAndGetCredentials() {
         var ssid = document.getElementById("ssid").value;
         var pass = document.getElementById("password").value;
         var valid_credentials = 1;
@@ -118,15 +163,127 @@
             }
         }
 
-        if (valid_credentials) {
+        if (valid_credentials)
+            return [ssid, pass];
+        return [null, null];
+    }
+
+
+    function saveCredentials() {
+        var [ssid, pass] = checkAndGetCredentials();
+
+
+        if (ssid != null) {
             console.log("Credentials are valid, lets send");
             document.getElementById("ssid").disabled = true;
             document.getElementById("password").disabled = true;
             document.getElementById("save").disabled = true;
             document.getElementById("reset").disabled = true;
 
-            var packet = ssid + "+" + pass ;
-            var xhttp = new XMLHttpRequest();
+            var jsonCredentials = {ssid: ssid, pass: pass};
+            var packet = JSON.stringify(jsonCredentials)
+            console.log(packet)
+            sendData("/save_credentials", packet, 'application/json');
+        }
+    }
+
+    function resetCredentials() {
+        document.getElementById("ssid").disabled = true;
+        document.getElementById("password").disabled = true;
+        document.getElementById("save").disabled = true;
+        document.getElementById("reset").disabled = true;
+        sendData("/reset_credentials");
+    }
+
+    function setOpenocdConfig(sendCredentials=false) {
+        var fCommand = document.getElementById("fCommand");
+        var cCommand = document.getElementById("cCommand").value;
+        var dDropdown = document.getElementById("dCommand");
+        var rtosDropdown = document.getElementById("rtos");
+        var dualCoreCheckbox = document.getElementById("dualCore");
+        var flashSupportCheckbox = document.getElementById("flashSupport");
+
+        document.getElementById("fCommand").disabled = true;
+        document.getElementById("cCommand").disabled = true;
+        document.getElementById("dCommand").disabled = true;
+        document.getElementById("rtos").disabled = true;
+        document.getElementById("dualCore").disabled = true;
+        document.getElementById("flashSupport").disabled = true;
+
+        var flags= ["-f", "--file", "-c", "--command", "--debug", "-d"]
+
+        var rtosIndexText = rtosDropdown.options[rtosDropdown.selectedIndex].text;
+
+        var cParamStr = "";
+        var dParamStr = "-d" + dDropdown.options[dDropdown.selectedIndex].text;
+        var fParamStr = fCommand.options[fCommand.selectedIndex].value;
+
+        var rtosIndex = String.fromCharCode(rtosDropdown.selectedIndex);
+        var flashSupport = flashSupportCheckbox.checked;
+        var dualCore = dualCoreCheckbox.checked;
+
+        if (cCommand.length > 0) {
+            flags.forEach(value => cCommand = cCommand.replaceAll(value, ""));
+            cParamStr+=  cCommand + "; ";
+        }
+
+        cParamStr+= "set ESP_FLASH_SIZE " + (flashSupport == false ? "0" : "auto") + "; "
+        cParamStr+= "set ESP_RTOS " + rtosIndexText + "; "
+
+        if (fParamStr.includes("esp32s3")) {
+            cParamStr+= " set ESP32_S3_ONLYCPU " + (dualCore == false ? "1" : "2")
+        } else {
+            cParamStr+= " set ESP32_ONLYCPU " + (dualCore == false ? "1" : "3")
+        }
+        flashSupport = (flashSupport == false ? "0" : "1");
+        dualCore = (flashSupport == false ? "0" : "1");
+
+        var jsonStr = {command: cParamStr, debug: dParamStr, file: fParamStr, dual_core: dualCore, flash_support: flashSupport, rtos: rtosIndex};
+
+        console.log(jsonStr)
+
+        if(sendCredentials) {
+            var [ssid_str, pass_str] = checkAndGetCredentials();
+            if(ssid != null) {
+                Object.assign(jsonStr, {ssid: ssid_str, pass: pass_str})
+            }
+        }
+
+        var configString = JSON.stringify(jsonStr)
+        sendData("/set_openocd_config", configString, 'application/json');
+    }
+
+    function upload() {
+        var fileInput = document.getElementById("newfile").files;
+
+        /* Max size of an individual file. Make sure this
+        * value is same as that set in file_server.c */
+        var MAX_FILE_SIZE = 200*1024;
+        var MAX_FILE_SIZE_STR = "200KB";
+        var proceed = true;
+
+        if (fileInput.length == 0) {
+            alert("No file selected!");
+            proceed = false;
+        } else if (fileInput[0].size > 200*1024) {
+            alert("File size must be less than 200KB!");
+            proceed = false;
+        } else if (fileInput[0].name.includes("esp_common.cfg") || fileInput[0].name.includes("xtensa-core-esp32")) {
+            proceed = confirm("File input stuck in the filter. You cannot select this file as target. Proceed?");
+        }
+
+        if (proceed) {
+            document.getElementById("newfile").disabled = true;
+            document.getElementById("upload").disabled = true;
+
+            var upload_path = "/upload/" + fileInput[0].name;
+            var file = fileInput[0];
+            sendData(upload_path, file);
+        }
+    }
+
+    function sendData(path, data=null, contentType="text/plain") {
+        var xhttp = new XMLHttpRequest();
             xhttp.onreadystatechange = function() {
                 if (xhttp.readyState == 4) {
                     if (xhttp.status == 200) {
@@ -142,82 +299,22 @@
                     }
                 }
             };
-            xhttp.open("POST", "/save_credentials", true);
-            xhttp.send(packet);
-        }
-    }
-
-    function resetCredentials() {
-        document.getElementById("ssid").disabled = true;
-        document.getElementById("password").disabled = true;
-        document.getElementById("save").disabled = true;
-        document.getElementById("reset").disabled = true;
-
-        var xhttp = new XMLHttpRequest();
-        xhttp.onreadystatechange = function() {
-            if (xhttp.readyState == 4) {
-                if (xhttp.status == 200) {
-                    document.open();
-                    document.write(xhttp.responseText);
-                    document.close();
-                } else if (xhttp.status == 0) {
-                    alert("Server closed the connection abruptly!");
-                    location.reload()
-                } else {
-                    alert(xhttp.status + " Error!\n" + xhttp.responseText);
-                    location.reload()
-                }
-            }
-        };
-        xhttp.open("POST", "/reset_credentials", true);
-        xhttp.send();
-    }
-
-    function setOpenocdConfig() {
-        var fCommand = document.getElementById("fCommand").value;
-        var cCommand = document.getElementById("cCommand").value;
-        var dCommand = document.getElementById("dCommand").value;
-
-        if (fCommand.length == 0) {
-            alert("File parameter is not set!");
-            return;
-        }
-
-        document.getElementById("fCommand").disabled = true;
-        document.getElementById("cCommand").disabled = true;
-        document.getElementById("dCommand").disabled = true;
-
-        var xhttp = new XMLHttpRequest();
-        xhttp.onreadystatechange = function() {
-            if (xhttp.readyState == 4) {
-                if (xhttp.status == 200) {
-                    document.open();
-                    document.write(xhttp.responseText);
-                    document.close();
-                } else if (xhttp.status == 0) {
-                    alert("Server closed the connection abruptly!");
-                    location.reload()
-                } else {
-                    alert(xhttp.status + " Error!\n" + xhttp.responseText);
-                    location.reload()
-                }
-            }
-        };
-
-        var delimiter = "&"
-        var flags= ["-f", "--file", "-c", "--command", "--debug", "-d"]
-
-        flags.forEach(value => fCommand = fCommand.replaceAll(value, ""));
-        var configString = "-f" + delimiter + fCommand;
-        if (cCommand.length > 0) {
-            flags.forEach(value => cCommand = cCommand.replaceAll(value, ""));
-            configString+= delimiter + "-c" + delimiter + cCommand;
-        }
-        if (dCommand.length > 0) {
-            flags.forEach(value => dCommand = dCommand.replaceAll(value, ""));
-            configString+= delimiter + "-d" + dCommand;
-        }
-        xhttp.open("POST", "/set_openocd_config", true);
-        xhttp.send(configString);
+        xhttp.open("POST", path, true);
+        xhttp.setRequestHeader('Content-Type', contentType)
+        xhttp.send(data);
     }
 </script>
+             <tr>
+                <td>
+                    <h3>Custom Config</h3>
+                </td>
+             </tr>
+             <tr>
+                <td>
+                    <label for="newfile">Upload a file</label>
+                </td>
+                <td colspan="2">
+                    <input id="newfile" type="file" style="width:100%;">
+                    <button id="upload" type="button" onclick="upload()">Upload</button>
+                </td>
+            </tr>

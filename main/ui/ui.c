@@ -43,6 +43,7 @@ lv_obj_t *ui_debuglevelpanel;
 lv_obj_t *ui_debuglevellabel;
 void ui_event_debuglevelodropdown(lv_event_t *e);
 lv_obj_t *ui_debuglevelodropdown;
+lv_obj_t *ui_messagebox = NULL;
 
 ///////////////////// TEST LVGL SETTINGS ////////////////////
 #if LV_COLOR_DEPTH != 16
@@ -378,7 +379,7 @@ void ui_ConfigScreen_screen_init(void)
     lv_obj_add_event_cb(ui_ConfigScreen, ui_event_ConfigScreen, LV_EVENT_ALL, NULL);
 }
 
-void ui_init(void)
+void ui_widget_init(void)
 {
     lv_disp_t *disp = lv_disp_get_default();
     lv_theme_t *theme = lv_theme_default_init(disp, lv_palette_main(LV_PALETTE_BLUE), lv_palette_main(LV_PALETTE_RED),
@@ -388,4 +389,20 @@ void ui_init(void)
     ui_ConfigScreen_screen_init();
 
     lv_disp_set_theme(disp, theme);
+}
+
+void ui_init(void)
+{
+    bsp_display_lock(0);
+    ui_widget_init();
+    ui_set_target_menu();
+    ui_set_oocd_config();
+    bsp_display_unlock();
+}
+
+void ui_hw_init(void)
+{
+    bsp_i2c_init();
+    bsp_display_start();
+    bsp_display_backlight_on();
 }

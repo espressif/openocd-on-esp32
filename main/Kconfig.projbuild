@@ -1,58 +1,7 @@
 menu "OpenOCD-on-ESP32 Configuration"
 
-    choice CONN_METHOD
-        bool "Config input method"
-        default CONN_PROV
-        help
-            Wi-Fi credentials can be entered via Provisoning, Web Server or Menuconfig. Choose anyone.
-
-        config CONN_PROV
-            bool "Change WiFi settings with Provisioning"
-            select CONN_PROV_METHOD
-
-        config CONN_WEB_SERVER
-            bool "Change WiFi settings and OpenOCD configuration from WebServer"
-            select CONN_WEB_SERVER_METHOD
-
-        config CONN_MANUAL
-            bool "Change WiFi settings and OpenOCD configuration manually"
-            select CONN_MANUAL_METHOD
-
-    endchoice
-
-    config ESP_WIFI_SSID
-        string "WiFi SSID"
-        default "myssid"
-        depends on CONN_MANUAL
-        help
-            SSID (network name) to connect.
-
-    config ESP_WIFI_PASSWORD
-        string "WiFi Password"
-        default "mypassword"
-        depends on CONN_MANUAL
-        help
-            WiFi password (WPA or WPA2) for the example to use.
-
-    config OPENOCD_F_PARAM
-        string "OpenOCD -f/--file parameter"
-        default "target/esp32.cfg"
-        depends on CONN_MANUAL
-        help
-            OpenOCD --file/-f parameter to run.
-
-    config OPENOCD_C_PARAM
-        string "OpenOCD -c/--command parameter"
-        default ""
-        depends on CONN_MANUAL
-        help
-            OpenOCD --command/-c parameter to run.
-
-    config OPENOCD_D_PARAM
-        int "OpenOCD -d/--debug parameter"
-        default "2"
-        depends on CONN_MANUAL
-        help
-            OpenOCD --debug/-d parameter to run.
+    config UI_ENABLE
+        bool "Use touchscreen to enter input"
+        default n
 
 endmenu

@@ -50,7 +50,7 @@ extern lv_obj_t *ui_debuglevelpanel;
 extern lv_obj_t *ui_debuglevellabel;
 void ui_event_debuglevelodropdown(lv_event_t *e);
 extern lv_obj_t *ui_debuglevelodropdown;
-
+extern lv_obj_t *ui_messagebox;
 
 void target_select_dropdown_handler(lv_event_t *e);
 void reset_button_handler(lv_event_t *e);
@@ -59,13 +59,17 @@ void rtos_support_dropdown_handler(lv_event_t *e);
 void flash_support_checkbox_handler(lv_event_t *e);
 void dual_core_checkbox_handler(lv_event_t *e);
 void debug_level_dropdown_handler(lv_event_t *e);
-void init_ui(void);
 
+void ui_set_target_menu(void);
 void ui_init(void);
 void ui_load_config_screen(void);
 void ui_load_connection_screen(void);
 void ui_clear_screen(void);
 void ui_print_qr(char *data);
+void ui_load_message(char *title, char *text);
+void ui_show_error(const char *file, int line);
+void ui_set_oocd_config(void);
+void ui_hw_init(void);
 
 #ifdef __cplusplus
 } /*extern "C"*/
