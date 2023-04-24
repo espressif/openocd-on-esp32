@@ -10,6 +10,7 @@
 
 #include "storage.h"
 #include "networking.h"
+#include "log.h"
 
 #define STORAGE_NAMESPACE           "NVS_DATA"
 
@@ -56,10 +57,10 @@ esp_err_t storage_nvs_write(const char *key, const char *value, size_t size)
 {
     nvs_handle_t my_handle;
 
-    ESP_RETURN_ON_ERROR((!key || !value), TAG, "Key or Value is NULL");
-    ESP_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
-    ESP_RETURN_ON_ERROR(nvs_set_blob(my_handle, key, value, size), TAG, "Failed to set blob \"%s\"", key);
-    ESP_RETURN_ON_ERROR(nvs_commit(my_handle), TAG, "Failed save changes");
+    OOCD_RETURN_ON_ERROR((!key || !value), TAG, "Key or Value is NULL");
+    OOCD_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
+    OOCD_RETURN_ON_ERROR(nvs_set_blob(my_handle, key, value, size), TAG, "Failed to set blob \"%s\"", key);
+    OOCD_RETURN_ON_ERROR(nvs_commit(my_handle), TAG, "Failed save changes");
     nvs_close(my_handle);
 
     return ESP_OK;
@@ -70,9 +71,9 @@ esp_err_t storage_nvs_read(const char *key, char *value, size_t size)
     nvs_handle_t my_handle;
     size_t n_bytes = size;
 
-    ESP_RETURN_ON_ERROR(!key, TAG, "Key is NULL");
-    ESP_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
-    ESP_RETURN_ON_ERROR(nvs_get_blob(my_handle, key, value, &n_bytes), TAG, "Failed to get blob \"%s\"", key);
+    OOCD_RETURN_ON_ERROR(!key, TAG, "Key is NULL");
+    OOCD_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
+    OOCD_RETURN_ON_ERROR(nvs_get_blob(my_handle, key, value, &n_bytes), TAG, "Failed to get blob \"%s\"", key);
     nvs_close(my_handle);
 
     if (n_bytes != size) {
@@ -86,9 +87,9 @@ int storage_nvs_erase_key(const char *key)
 {
     nvs_handle_t my_handle;
 
-    ESP_RETURN_ON_ERROR(!key, TAG, "Key is NULL");
-    ESP_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
-    ESP_RETURN_ON_ERROR(nvs_erase_key(my_handle, key), TAG, "Failed to erase \"%s\"", key);
+    OOCD_RETURN_ON_ERROR(!key, TAG, "Key is NULL");
+    OOCD_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
+    OOCD_RETURN_ON_ERROR(nvs_erase_key(my_handle, key), TAG, "Failed to erase \"%s\"", key);
     nvs_close(my_handle);
 
     return ESP_OK;

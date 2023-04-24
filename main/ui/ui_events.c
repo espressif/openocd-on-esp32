@@ -7,6 +7,7 @@
 #include "esp_log.h"
 #include "esp_system.h"
 #include "../networking.h"
+#include "../log.h"
 
 static const char *TAG = "ui";
 
@@ -15,7 +16,7 @@ static void dual_core_ui_setup();
 
 void reset_button_handler(lv_event_t *e)
 {
-    ESP_OOCD_ERROR_CHECK(storage_nvs_erase_everything(), TAG, NULL);
+    ESP_OOCD_ERROR_CHECK(storage_nvs_erase_everything(), NULL, "Failed to erase NVS");
     esp_restart();
 }
 
@@ -25,7 +26,7 @@ void target_select_dropdown_handler(lv_event_t *e)
     oocd_config.target_index = lv_dropdown_get_selected(obj);
 
     char *target_name;
-    ESP_OOCD_ERROR_CHECK(storage_get_target_name_from_index(oocd_config.target_index, &target_name), TAG, NULL);
+    ESP_OOCD_ERROR_CHECK(storage_get_target_name_from_index(oocd_config.target_index, &target_name), NULL, "Failed to get target index");
     if (storage_is_target_single_core(target_name)) {
         single_core_ui_setup();
     } else {
@@ -37,9 +38,9 @@ void target_select_dropdown_handler(lv_event_t *e)
 void run_openocd_button_handler(lv_event_t *e)
 {
     char *target_name;
-    ESP_OOCD_ERROR_CHECK(storage_get_target_name_from_index(oocd_config.target_index, &target_name), TAG, NULL);
+    ESP_OOCD_ERROR_CHECK(storage_get_target_name_from_index(oocd_config.target_index, &target_name), NULL, "Failed to get target index");
     char *file_param = NULL;
-    ESP_OOCD_ERROR_CHECK(storage_get_target_path(target_name, &file_param), TAG, NULL);
+    ESP_OOCD_ERROR_CHECK(storage_get_target_path(target_name, &file_param), NULL, "Failed to get target path");
 
     int ret = storage_nvs_write(OOCD_F_PARAM_KEY, file_param, strlen(file_param));
     if (ret != ESP_OK) {
@@ -148,7 +149,7 @@ void ui_load_config_screen(void)
     bsp_display_unlock();
 }
 
-void ui_load_message(char *title, char *text)
+void ui_load_message(const char *title, const char *text)
 {
     bsp_display_lock(0);
     if (ui_messagebox != NULL) {
@@ -160,11 +161,16 @@ void ui_load_message(char *title, char *text)
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 }
 
-void ui_show_error(const char *file, int line)
+void ui_show_error(const char *msg, const char *file, int line)
 {
-    char text[128] = {0};
-    snprintf(text, sizeof(text), "%s:%d", file, line);
-    ui_load_message("Error", text);
+    if (file) {
+        // if source file info is available (debug build)
+        char text[128] = {0};
+        snprintf(text, sizeof(text), "%s!\n(%s:%d)", msg, file, line);
+        ui_load_message("Error", text);
+        return;
+    }
+    ui_load_message("Error", msg);
 }
 
 void ui_print_qr(char *data)

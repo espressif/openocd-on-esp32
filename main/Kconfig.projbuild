@@ -4,4 +4,8 @@ menu "OpenOCD-on-ESP32 Configuration"
         bool "Use touchscreen to enter input"
         default n
 
+    config DEBUG_BUILD
+        bool "Build system with debug logs"
+        default n
+
 endmenu

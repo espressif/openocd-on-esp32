@@ -14,6 +14,7 @@
 #include "openocd.h"
 #include "networking.h"
 #include "ui/ui.h"
+#include "log.h"
 
 #if CONFIG_UI_ENABLE
 static const char s_connection_type = '1';
@@ -75,6 +76,7 @@ void run_openocd(void)
     argv[argc++] = "-c";
     int ret_nvs = storage_nvs_read_param(OOCD_C_PARAM_KEY, &param);
     if (ret_nvs != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to get --command, -c parameter");
         argv[argc++] = default_c_param;
     } else if (param != NULL) {
         argv[argc++] = param;
@@ -86,6 +88,7 @@ void run_openocd(void)
     argv[argc++] = "-f";
     ret_nvs = storage_nvs_read_param(OOCD_F_PARAM_KEY, &argv[argc]);
     if (ret_nvs != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to get --file, -f parameter.");
         argv[argc++] = default_f_param;
     } else if (argv[argc++] == NULL) {
         ESP_LOGE(TAG, "File parameter is NULL");
@@ -94,6 +97,7 @@ void run_openocd(void)
 
     ret_nvs = storage_nvs_read_param(OOCD_D_PARAM_KEY, &param);
     if (ret_nvs != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to get --debug, -d parameter");
         argv[argc++] = default_d_param;
     } else if (param != NULL) {
         argv[argc++] = param;
@@ -141,7 +145,7 @@ esp_err_t check_connection_config(void)
             esp_restart();
         }
     }
-    ESP_RETURN_ON_ERROR(storage_nvs_write(CONNECTION_TYPE_KEY, &s_connection_type, 1), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(storage_nvs_write(CONNECTION_TYPE_KEY, &s_connection_type, 1), TAG, "Failed to save connection type");
     return ESP_OK;
 }
 

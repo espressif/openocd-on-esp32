@@ -22,6 +22,7 @@
 #include "networking.h"
 #include "ui/ui.h"
 #include "web_server.h"
+#include "log.h"
 
 #define CONN_DONE_FLAG              (1 << 0)
 #define MAX_WIFI_CONN_RETRY         5
@@ -165,13 +166,13 @@ static esp_err_t init_wifi_mode(void)
 
 static esp_err_t init_ap_mode(void)
 {
-    ESP_RETURN_ON_ERROR(esp_event_handler_instance_register(WIFI_EVENT,
-                        ESP_EVENT_ANY_ID,
-                        &event_handler,
-                        NULL,
-                        NULL),
-                        TAG,
-                        "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(esp_event_handler_instance_register(WIFI_EVENT,
+                         ESP_EVENT_ANY_ID,
+                         &event_handler,
+                         NULL,
+                         NULL),
+                         TAG,
+                         "Failed to register WiFi AP event handler");
 
     wifi_config_t wifi_config = {
         .ap = {
@@ -186,9 +187,9 @@ static esp_err_t init_ap_mode(void)
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
 
-    ESP_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_AP), TAG, "Failed at %s:%d", __FILE__, __LINE__);
-    ESP_RETURN_ON_ERROR(esp_wifi_set_config(WIFI_IF_AP, &wifi_config), TAG, "Failed at %s:%d", __FILE__, __LINE__);
-    ESP_RETURN_ON_ERROR(esp_wifi_start(), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_AP), TAG, "Failed to set WiFi mode as AP");
+    OOCD_RETURN_ON_ERROR(esp_wifi_set_config(WIFI_IF_AP, &wifi_config), TAG, "Failed to set WiFi config");
+    OOCD_RETURN_ON_ERROR(esp_wifi_start(), TAG, "Failed to start WiFi");
 
     ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s", ESP_AP_SSID, ESP_AP_PASS);
     return ESP_OK;
@@ -214,27 +215,27 @@ static esp_err_t init_sta_mode(void)
         esp_restart();
     }
 
-    ESP_RETURN_ON_ERROR(esp_event_handler_register(WIFI_EVENT,
-                        ESP_EVENT_ANY_ID,
-                        &event_handler,
-                        NULL),
-                        TAG,
-                        "Failed at %s:%d", __FILE__, __LINE__);
-    ESP_RETURN_ON_ERROR(esp_event_handler_register(IP_EVENT,
-                        IP_EVENT_STA_GOT_IP,
-                        &event_handler,
-                        NULL),
-                        TAG,
-                        "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(esp_event_handler_register(WIFI_EVENT,
+                         ESP_EVENT_ANY_ID,
+                         &event_handler,
+                         NULL),
+                         TAG,
+                         "Failed to register WiFi STA event handler");
+    OOCD_RETURN_ON_ERROR(esp_event_handler_register(IP_EVENT,
+                         IP_EVENT_STA_GOT_IP,
+                         &event_handler,
+                         NULL),
+                         TAG,
+                         "Failed to register WiFi STA IP event handler");
 
     wifi_config_t wifi_config = { 0 };
     memcpy(wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
     memcpy(wifi_config.sta.password, password, sizeof(wifi_config.sta.password));
 
 
-    ESP_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_STA), TAG, "Failed at %s:%d", __FILE__, __LINE__);
-    ESP_RETURN_ON_ERROR(esp_wifi_set_config(WIFI_IF_STA, &wifi_config), TAG, "Failed at %s:%d", __FILE__, __LINE__);
-    ESP_RETURN_ON_ERROR(esp_wifi_start(), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(esp_wifi_set_mode(WIFI_MODE_STA), TAG, "Failed to set WiFi mode as STA");
+    OOCD_RETURN_ON_ERROR(esp_wifi_set_config(WIFI_IF_STA, &wifi_config), TAG, "Failed to set WiFi config");
+    OOCD_RETURN_ON_ERROR(esp_wifi_start(), TAG, "Failed to start WiFi");
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 
@@ -245,7 +246,7 @@ static esp_err_t init_connection(void)
 {
     char wifi_mode;
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_RETURN_ON_ERROR(esp_wifi_init(&cfg), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(esp_wifi_init(&cfg), TAG, "Failed to init WiFi");
     esp_err_t ret_nvs = get_wifi_mode(&wifi_mode);
 
     if (ret_nvs == ESP_OK && wifi_mode == WIFI_STA_MODE) {
@@ -279,15 +280,24 @@ static void wifi_prov_print_qr(const char *name, const char *pop, const char *tr
     }
     ui_load_connection_screen();
     ui_print_qr(payload);
-    ui_load_message("Web Server IP address:", "192.168.4.1");
     ESP_LOGI(TAG, "If QR code is not visible, copy paste the below URL in a browser.\n%s?data=%s", QRCODE_BASE_URL, payload);
+
+    esp_netif_ip_info_t ip_info;
+    esp_err_t ret = esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get ip adress");
+        return;
+    }
+    char ip_addr[16] = {0};
+    snprintf(ip_addr, sizeof(ip_addr), IPSTR, IP2STR(&ip_info.ip));
+    ui_load_message("Web Server IP address:", ip_addr);
 }
 
 static esp_err_t provisioning_init(void)
 {
-    ESP_RETURN_ON_ERROR(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL), TAG, "Failed at %s:%d", __FILE__, __LINE__);
-    ESP_RETURN_ON_ERROR(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL), TAG, "Failed at %s:%d", __FILE__, __LINE__);
-    ESP_RETURN_ON_ERROR(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL), TAG, "Failed to register provisioning event handler");
+    OOCD_RETURN_ON_ERROR(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL), TAG, "Failed to register WiFi event handler");
+    OOCD_RETURN_ON_ERROR(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL), TAG, "Failed to register IP event handler");
 
     ESP_LOGI(TAG, "Starting provisioning");
 
@@ -295,7 +305,7 @@ static esp_err_t provisioning_init(void)
         .scheme = wifi_prov_scheme_softap,
         .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE
     };
-    ESP_RETURN_ON_ERROR(wifi_prov_mgr_init(config), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(wifi_prov_mgr_init(config), TAG, "Failed to init provisioning manager");
     wifi_prov_scheme_softap_set_httpd_handle((void *)&server);
 
     wifi_prov_security_t security = WIFI_PROV_SECURITY_1;
@@ -303,7 +313,7 @@ static esp_err_t provisioning_init(void)
 
     /* Wi-Fi password */
     const char *service_key = NULL;
-    ESP_RETURN_ON_ERROR(wifi_prov_mgr_start_provisioning(security, (const void *) sec_params, ESP_AP_SSID, service_key), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(wifi_prov_mgr_start_provisioning(security, (const void *) sec_params, ESP_AP_SSID, service_key), TAG, "Failed to start provisioning");
     /* Print QR code for provisioning */
     wifi_prov_print_qr(ESP_AP_SSID, (char *)sec_params, PROV_TRANSPORT_SOFTAP);
 
@@ -346,9 +356,9 @@ esp_err_t networking_init(void)
 #if CONFIG_UI_ENABLE
     ui_init();
 #endif /* CONFIG_UI_ENABLE */
-    ESP_RETURN_ON_ERROR(init_wifi_mode(), TAG, "Failed at %s:%d", __FILE__, __LINE__);
-    ESP_RETURN_ON_ERROR(web_server_start(&server), TAG, "Failed at %s:%d", __FILE__, __LINE__);
-    ESP_RETURN_ON_ERROR(init_connection(), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(init_wifi_mode(), TAG, "Failed to init WiFi mode");
+    OOCD_RETURN_ON_ERROR(web_server_start(&server), TAG, "Failed to start web server");
+    OOCD_RETURN_ON_ERROR(init_connection(), TAG, "Failed to init connection");
 
     wait_for_connection(30000 / portTICK_PERIOD_MS);
 

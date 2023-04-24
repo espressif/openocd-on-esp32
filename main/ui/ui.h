@@ -66,8 +66,8 @@ void ui_load_config_screen(void);
 void ui_load_connection_screen(void);
 void ui_clear_screen(void);
 void ui_print_qr(char *data);
-void ui_load_message(char *title, char *text);
-void ui_show_error(const char *file, int line);
+void ui_load_message(const char *title, const char *text);
+void ui_show_error(const char *msg, const char *file, int line);
 void ui_set_oocd_config(void);
 void ui_hw_init(void);
 

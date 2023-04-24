@@ -11,15 +11,21 @@
 #include "networking.h"
 #include "web_server.h"
 #include "ui/ui.h"
+#include "log.h"
 
 #define FAVICON_URI "/favicon.ico"
 static const char *TAG = "web_server";
 
-void web_server_alert(httpd_req_t *req, const char *file, int line)
+void web_server_alert(httpd_req_t *req, const char *msg, const char *file, int line)
 {
-    char text[128] = {0};
-    snprintf(text, sizeof(text), "Error\nFailed at %s:%d", file, line);
-    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, text);
+    if (file) {
+        // if sourcefile info is available (debug build)
+        char text[128] = {0};
+        snprintf(text, sizeof(text), "%s:%d %s", file, line, msg);
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, text);
+    } else {
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, msg);
+    }
     vTaskDelay(200 / portTICK_PERIOD_MS);
 }
 
@@ -34,7 +40,7 @@ void web_server_add_option_into_dropdown(httpd_req_t *req, char *element_id, cha
     httpd_resp_sendstr_chunk(req, target_name);
     httpd_resp_sendstr_chunk(req, "\",\"");
     char *file_param = NULL;
-    ESP_OOCD_ERROR_CHECK(storage_get_target_path(target_name, &file_param), TAG, req);
+    ESP_OOCD_ERROR_CHECK(storage_get_target_path(target_name, &file_param), req, "Failed to get target path");
     httpd_resp_sendstr_chunk(req, file_param);
     httpd_resp_sendstr_chunk(req, "\");");
     httpd_resp_sendstr_chunk(req, "dropdown.add(option);");
@@ -102,9 +108,9 @@ static esp_err_t common_handler(httpd_req_t *req, int recv_size, const char *res
 
 static esp_err_t reset_credentials_handler(httpd_req_t *req)
 {
-    ESP_OOCD_ERROR_CHECK(storage_nvs_erase_key(SSID_KEY), TAG, req);
-    ESP_OOCD_ERROR_CHECK(storage_nvs_erase_key(PASSWORD_KEY), TAG, req);
-    ESP_OOCD_ERROR_CHECK(storage_nvs_erase_key(WIFI_MODE_KEY), TAG, req);
+    ESP_OOCD_ERROR_CHECK(storage_nvs_erase_key(SSID_KEY), req, "Failed to erase SSID");
+    ESP_OOCD_ERROR_CHECK(storage_nvs_erase_key(PASSWORD_KEY), req, "Failed to erase password");
+    ESP_OOCD_ERROR_CHECK(storage_nvs_erase_key(WIFI_MODE_KEY), req, "Failed to erase WiFi mode");
 
     int ret = send_response(req, "The credentials are being reset");
     if (ret != ESP_OK) {
@@ -146,7 +152,7 @@ static esp_err_t save_credentials_handler(httpd_req_t *req)
         ESP_LOGE(TAG, "WiFi name is NULL");
         return ESP_FAIL;
     }
-    ESP_RETURN_ON_ERROR(storage_save_credentials(ssid->valuestring, pass->valuestring), TAG, "Error on saving credentials");
+    OOCD_RETURN_ON_ERROR(storage_save_credentials(ssid->valuestring, pass->valuestring), TAG, "Error on saving credentials");
     cJSON_Delete(json);
     esp_restart();
 
@@ -194,7 +200,7 @@ static esp_err_t set_openocd_config_handler(httpd_req_t *req)
     cJSON *pass = cJSON_GetObjectItem(json, PASSWORD_KEY);
     if (pass && ssid && ssid->valuestring) {
         ESP_LOGI(TAG, "Saving WiFi crendentials");
-        ESP_RETURN_ON_ERROR(storage_save_credentials(ssid->valuestring, pass->valuestring), TAG, "Error on saving credentials");
+        OOCD_RETURN_ON_ERROR(storage_save_credentials(ssid->valuestring, pass->valuestring), TAG, "Error on saving credentials");
     }
     cJSON_Delete(json);
 
@@ -341,7 +347,7 @@ static esp_err_t main_page_handler(httpd_req_t *req)
 
     const char *main_uri = "/";
     char *filepath = NULL;
-    ESP_RETURN_ON_ERROR(get_path_from_uri(req, main_uri, &filepath), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(get_path_from_uri(req, main_uri, &filepath), TAG, "Failed get path from URI '%s'!", main_uri);
     if (!filepath) {
         ESP_LOGE(TAG, "Allocation error");
         return ESP_FAIL;
@@ -388,7 +394,7 @@ static esp_err_t upload_post_handler(httpd_req_t *req)
 {
     const char *upload_uri = "/upload/";
     char *filepath = NULL;
-    ESP_RETURN_ON_ERROR(get_path_from_uri(req, upload_uri, &filepath), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(get_path_from_uri(req, upload_uri, &filepath), TAG, "Failed get path from URI '%s'!", upload_uri);
     if (!filepath) {
         ESP_LOGE(TAG, "Allocation error");
         return ESP_FAIL;
@@ -453,7 +459,7 @@ static esp_err_t delete_post_handler(httpd_req_t *req)
 {
     const char *delete_uri = "/delete/";
     char *filepath = NULL;
-    ESP_RETURN_ON_ERROR(get_path_from_uri(req, delete_uri, &filepath), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(get_path_from_uri(req, delete_uri, &filepath), TAG, "Failed get path from URI '%s'!", delete_uri);
     if (!filepath) {
         ESP_LOGE(TAG, "Allocation error");
         return ESP_FAIL;
@@ -503,7 +509,7 @@ esp_err_t web_server_start(httpd_handle_t *server)
         .handler   = main_page_handler,
         .user_ctx  = NULL
     };
-    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(*server, &main_page), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(httpd_register_uri_handler(*server, &main_page), TAG, "Failed to register %s uri handler", main_page.uri);
 
     /* URI handler for uploading files to server */
     httpd_uri_t file_upload = {
@@ -512,7 +518,7 @@ esp_err_t web_server_start(httpd_handle_t *server)
         .handler   = upload_post_handler,
         .user_ctx  = NULL
     };
-    httpd_register_uri_handler(*server, &file_upload);
+    OOCD_RETURN_ON_ERROR(httpd_register_uri_handler(*server, &file_upload), TAG, "Failed to register %s uri handler", file_upload.uri);
 
     /* URI handler for deleting files from server */
     httpd_uri_t file_delete = {
@@ -521,7 +527,7 @@ esp_err_t web_server_start(httpd_handle_t *server)
         .handler   = delete_post_handler,
         .user_ctx  = NULL
     };
-    httpd_register_uri_handler(*server, &file_delete);
+    OOCD_RETURN_ON_ERROR(httpd_register_uri_handler(*server, &file_delete), TAG, "Failed to register %s uri handler", file_delete.uri);
 
     /* URI handler to send credentials */
     httpd_uri_t save_credentials = {
@@ -530,7 +536,7 @@ esp_err_t web_server_start(httpd_handle_t *server)
         .handler   = save_credentials_handler,
         .user_ctx  = NULL
     };
-    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(*server, &save_credentials), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(httpd_register_uri_handler(*server, &save_credentials), TAG, "Failed to register %s uri handler", save_credentials.uri);
 
     /* URI handler to set OpenOCD parameters */
     httpd_uri_t set_openocd_config = {
@@ -539,7 +545,7 @@ esp_err_t web_server_start(httpd_handle_t *server)
         .handler   = set_openocd_config_handler,
         .user_ctx  = NULL
     };
-    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(*server, &set_openocd_config), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(httpd_register_uri_handler(*server, &set_openocd_config), TAG, "Failed to register %s uri handler", set_openocd_config.uri);
 
     /* URI handler to reset credentials */
     httpd_uri_t reset_credentials = {
@@ -548,7 +554,7 @@ esp_err_t web_server_start(httpd_handle_t *server)
         .handler   = reset_credentials_handler,
         .user_ctx  = NULL
     };
-    ESP_RETURN_ON_ERROR(httpd_register_uri_handler(*server, &reset_credentials), TAG, "Failed at %s:%d", __FILE__, __LINE__);
+    OOCD_RETURN_ON_ERROR(httpd_register_uri_handler(*server, &reset_credentials), TAG, "Failed to register %s uri handler", reset_credentials.uri);
 
     return ESP_OK;
 }
