@@ -1,6 +1,7 @@
 #ifndef __STORAGE_H__
 #define __STORAGE_H__
 
+#define OOCD_INTERFACE_PARAM_KEY    "interface"
 #define OOCD_F_PARAM_KEY            "file"
 #define OOCD_C_PARAM_KEY            "command"
 #define OOCD_D_PARAM_KEY            "debug"
@@ -17,6 +18,7 @@ struct esp_oocd_config {
     int rtos;
     int target_index;
     int debug_level_index;
+    int interface_index;
 };
 extern struct esp_oocd_config oocd_config;
 

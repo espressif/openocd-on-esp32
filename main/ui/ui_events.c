@@ -91,6 +91,17 @@ void run_openocd_button_handler(lv_event_t *e)
         ESP_LOGE(TAG, "Failed to save rtos option");
     }
 
+    if (oocd_config.interface_index) {
+        const char swd_interface[] = "interface/esp32_gpio_swd.cfg";
+        ret = storage_nvs_write(OOCD_INTERFACE_PARAM_KEY, swd_interface, strlen(swd_interface));
+    } else {
+        const char jtag_interface[] = "interface/esp32_gpio_jtag.cfg";
+        ret = storage_nvs_write(OOCD_INTERFACE_PARAM_KEY, jtag_interface, strlen(jtag_interface));
+    }
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save debug interface option");
+    }
+
     esp_restart();
 }
 
@@ -114,6 +125,12 @@ void debug_level_dropdown_handler(lv_event_t *e)
 {
     lv_obj_t *obj = lv_event_get_target(e);
     oocd_config.debug_level_index = lv_dropdown_get_selected(obj);
+}
+
+void debug_interface_dropdown_handler(lv_event_t *e)
+{
+    lv_obj_t *obj = lv_event_get_target(e);
+    oocd_config.interface_index = lv_dropdown_get_selected(obj);
 }
 
 static void single_core_ui_setup(void)
@@ -210,6 +227,7 @@ void ui_set_oocd_config(void)
 
     lv_dropdown_set_selected(ui_rtosdropdown, oocd_config.rtos);
     lv_dropdown_set_selected(ui_debuglevelodropdown, oocd_config.debug_level_index);
+    lv_dropdown_set_selected(ui_debuginterfacedropdown, oocd_config.interface_index);
 }
 
 void ui_set_target_menu(void)

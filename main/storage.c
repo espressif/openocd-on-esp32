@@ -134,7 +134,7 @@ esp_err_t storage_nvs_erase_everything(void)
 
 static bool will_be_filtered(const char *file_name)
 {
-    const char *filtered_files[] = {"esp_common.cfg", "xtensa-core-esp32"};
+    const char *filtered_files[] = {"esp_common.cfg", "xtensa-core-esp32", "stm32f1x", "swj-dp"};
 
     for (int i = 0; i < sizeof(filtered_files) / sizeof(char *); i++) {
         if (strstr(file_name, filtered_files[i]) != NULL) {
@@ -366,6 +366,7 @@ esp_err_t storage_get_openocd_config(void)
     oocd_config.rtos = 0;
     oocd_config.target_index = 0;
     oocd_config.debug_level_index = 0;
+    oocd_config.interface_index = 0;
 
     int ret_nvs = storage_nvs_read(DUAL_CORE_KEY, &option, 1);
     if (ret_nvs == ESP_OK && option == '0') {
@@ -382,7 +383,7 @@ esp_err_t storage_get_openocd_config(void)
         oocd_config.rtos = option;
     }
 
-    char *param;
+    char *param = NULL;
     ret_nvs = storage_nvs_read_param(OOCD_F_PARAM_KEY, &param);
     if (ret_nvs == ESP_OK) {
         int index = get_index_from_target_name(param + strlen(TARGET_PATH_PRELIM));
@@ -390,11 +391,25 @@ esp_err_t storage_get_openocd_config(void)
             oocd_config.target_index = index;
         }
     }
+    free(param);
+    param = NULL;
+
+    ret_nvs = storage_nvs_read_param(OOCD_INTERFACE_PARAM_KEY, &param);
+    if (ret_nvs == ESP_OK) {
+        const char swd_interface[] = "interface/esp32_gpio_swd.cfg";
+        if (!strcmp(param, swd_interface)) {
+            oocd_config.interface_index = 1;
+        }
+    }
+    free(param);
+    param = NULL;
 
     ret_nvs = storage_nvs_read_param(OOCD_D_PARAM_KEY, &param);
     if (ret_nvs == ESP_OK) {
         oocd_config.debug_level_index = param[strlen(param) - 1] - 48 - 2;
     }
+    free(param);
+    param = NULL;
 
     return ESP_OK;
 }

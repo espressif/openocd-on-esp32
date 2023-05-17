@@ -63,6 +63,7 @@ void run_openocd(void)
     char *default_f_param = "target/esp32.cfg";
     char *default_c_param = "set ESP_FLASH_SIZE auto; set ESP_RTOS FreeRTOS; set ESP32_ONLYCPU 3;";
     char *default_d_param = "-d2";
+    char *default_interface_param = "interface/esp32_gpio_jtag.cfg";
 
     setenv("OPENOCD_SCRIPTS", "/data", 1);
     char *argv[10] = {
@@ -83,7 +84,14 @@ void run_openocd(void)
     }
 
     argv[argc++] = "-f";
-    argv[argc++] = "interface/esp32_gpio.cfg";
+    ret_nvs = storage_nvs_read_param(OOCD_INTERFACE_PARAM_KEY, &argv[argc]);
+    if (ret_nvs != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to get debug interface parameter.");
+        argv[argc++] = default_interface_param;
+    } else if (argv[argc++] == NULL) {
+        ESP_LOGE(TAG, "Debug interface parameter is NULL");
+        return;
+    }
 
     argv[argc++] = "-f";
     ret_nvs = storage_nvs_read_param(OOCD_F_PARAM_KEY, &argv[argc]);

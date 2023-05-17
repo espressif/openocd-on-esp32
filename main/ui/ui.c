@@ -43,6 +43,10 @@ lv_obj_t *ui_debuglevelpanel;
 lv_obj_t *ui_debuglevellabel;
 void ui_event_debuglevelodropdown(lv_event_t *e);
 lv_obj_t *ui_debuglevelodropdown;
+lv_obj_t *ui_debuginterfacepanel;
+lv_obj_t *ui_debuginterfacelabel;
+void ui_event_debuginterfacedropdown(lv_event_t *e);
+lv_obj_t *ui_debuginterfacedropdown;
 lv_obj_t *ui_messagebox = NULL;
 
 ///////////////////// TEST LVGL SETTINGS ////////////////////
@@ -120,6 +124,14 @@ void ui_event_debuglevelodropdown(lv_event_t *e)
     lv_event_code_t event_code = lv_event_get_code(e);
     if (event_code == LV_EVENT_VALUE_CHANGED) {
         debug_level_dropdown_handler(e);
+    }
+}
+
+void ui_event_debuginterfacedropdown(lv_event_t *e)
+{
+    lv_event_code_t event_code = lv_event_get_code(e);
+    if (event_code == LV_EVENT_VALUE_CHANGED) {
+        debug_interface_dropdown_handler(e);
     }
 }
 
@@ -214,22 +226,13 @@ void ui_ConfigScreen_screen_init(void)
 
     ui_targetslabel = lv_obj_create(ui_ConfigScreen);
     lv_obj_set_width(ui_targetslabel, 311);
-    lv_obj_set_height(ui_targetslabel, 50);
+    lv_obj_set_height(ui_targetslabel, 45);
     lv_obj_set_x(ui_targetslabel, -1);
-    lv_obj_set_y(ui_targetslabel, -54);
+    lv_obj_set_y(ui_targetslabel, -56);
     lv_obj_set_align(ui_targetslabel, LV_ALIGN_CENTER);
     lv_obj_set_flex_flow(ui_targetslabel, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(ui_targetslabel, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_clear_flag(ui_targetslabel, LV_OBJ_FLAG_SCROLLABLE);
-
-    ui_resetbutton = lv_btn_create(ui_ConfigScreen);
-    lv_obj_set_width(ui_resetbutton, 110);
-    lv_obj_set_height(ui_resetbutton, 38);
-    lv_obj_set_x(ui_resetbutton, -106);
-    lv_obj_set_y(ui_resetbutton, 98);
-    lv_obj_set_align(ui_resetbutton, LV_ALIGN_CENTER);
-    lv_obj_add_flag(ui_resetbutton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
-    lv_obj_clear_flag(ui_resetbutton, LV_OBJ_FLAG_SCROLLABLE);
 
     ui_targetselectlabel = lv_label_create(ui_targetslabel);
     lv_obj_set_width(ui_targetselectlabel, LV_SIZE_CONTENT);
@@ -238,8 +241,10 @@ void ui_ConfigScreen_screen_init(void)
     lv_label_set_text(ui_targetselectlabel, "Target");
 
     ui_targetselectdropdown = lv_dropdown_create(ui_targetslabel);
-    lv_obj_set_width(ui_targetselectdropdown, 200);
+    lv_obj_set_width(ui_targetselectdropdown, 225);
     lv_obj_set_height(ui_targetselectdropdown, LV_SIZE_CONTENT);
+    lv_obj_set_x(ui_targetselectdropdown, 18);
+    lv_obj_set_y(ui_targetselectdropdown, 2);
     lv_obj_set_align(ui_targetselectdropdown, LV_ALIGN_CENTER);
     lv_obj_add_flag(ui_targetselectdropdown, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_set_style_text_color(ui_targetselectdropdown, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -249,6 +254,15 @@ void ui_ConfigScreen_screen_init(void)
 
     lv_obj_set_style_text_color(ui_targetselectdropdown, lv_color_hex(0xFFFFFF), LV_PART_INDICATOR | LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui_targetselectdropdown, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+
+    ui_resetbutton = lv_btn_create(ui_ConfigScreen);
+    lv_obj_set_width(ui_resetbutton, 110);
+    lv_obj_set_height(ui_resetbutton, 38);
+    lv_obj_set_x(ui_resetbutton, -106);
+    lv_obj_set_y(ui_resetbutton, 98);
+    lv_obj_set_align(ui_resetbutton, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_resetbutton, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+    lv_obj_clear_flag(ui_resetbutton, LV_OBJ_FLAG_SCROLLABLE);
 
     ui_resetlabel = lv_label_create(ui_resetbutton);
     lv_obj_set_width(ui_resetlabel, LV_SIZE_CONTENT);
@@ -277,9 +291,9 @@ void ui_ConfigScreen_screen_init(void)
 
     ui_rtospanel = lv_obj_create(ui_ConfigScreen);
     lv_obj_set_width(ui_rtospanel, 155);
-    lv_obj_set_height(ui_rtospanel, 50);
+    lv_obj_set_height(ui_rtospanel, 42);
     lv_obj_set_x(ui_rtospanel, -79);
-    lv_obj_set_y(ui_rtospanel, 50);
+    lv_obj_set_y(ui_rtospanel, 55);
     lv_obj_set_align(ui_rtospanel, LV_ALIGN_CENTER);
     lv_obj_set_flex_flow(ui_rtospanel, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(ui_rtospanel, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -306,12 +320,12 @@ void ui_ConfigScreen_screen_init(void)
 
     ui_flashpabel = lv_obj_create(ui_ConfigScreen);
     lv_obj_set_width(ui_flashpabel, 155);
-    lv_obj_set_height(ui_flashpabel, 50);
+    lv_obj_set_height(ui_flashpabel, 30);
     lv_obj_set_x(ui_flashpabel, 77);
-    lv_obj_set_y(ui_flashpabel, -3);
+    lv_obj_set_y(ui_flashpabel, -17);
     lv_obj_set_align(ui_flashpabel, LV_ALIGN_CENTER);
     lv_obj_set_flex_flow(ui_flashpabel, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(ui_flashpabel, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_flex_align(ui_flashpabel, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_clear_flag(ui_flashpabel, LV_OBJ_FLAG_SCROLLABLE);
 
     ui_flashsupportcheckbox = lv_checkbox_create(ui_flashpabel);
@@ -324,12 +338,13 @@ void ui_ConfigScreen_screen_init(void)
 
     ui_dualcorepanel = lv_obj_create(ui_ConfigScreen);
     lv_obj_set_width(ui_dualcorepanel, 155);
-    lv_obj_set_height(ui_dualcorepanel, 50);
-    lv_obj_set_x(ui_dualcorepanel, -79);
-    lv_obj_set_y(ui_dualcorepanel, -3);
+    lv_obj_set_height(ui_dualcorepanel, 30);
+    lv_obj_set_x(ui_dualcorepanel, 77);
+    lv_obj_set_y(ui_dualcorepanel, 16);
     lv_obj_set_align(ui_dualcorepanel, LV_ALIGN_CENTER);
     lv_obj_set_flex_flow(ui_dualcorepanel, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(ui_dualcorepanel, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_flex_align(ui_dualcorepanel, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_add_state(ui_dualcorepanel, LV_STATE_DISABLED);
     lv_obj_clear_flag(ui_dualcorepanel, LV_OBJ_FLAG_SCROLLABLE);
 
     ui_dualcorecheckbox = lv_checkbox_create(ui_dualcorepanel);
@@ -344,9 +359,9 @@ void ui_ConfigScreen_screen_init(void)
 
     ui_debuglevelpanel = lv_obj_create(ui_ConfigScreen);
     lv_obj_set_width(ui_debuglevelpanel, 155);
-    lv_obj_set_height(ui_debuglevelpanel, 50);
+    lv_obj_set_height(ui_debuglevelpanel, 42);
     lv_obj_set_x(ui_debuglevelpanel, 77);
-    lv_obj_set_y(ui_debuglevelpanel, 50);
+    lv_obj_set_y(ui_debuglevelpanel, 55);
     lv_obj_set_align(ui_debuglevelpanel, LV_ALIGN_CENTER);
     lv_obj_set_flex_flow(ui_debuglevelpanel, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(ui_debuglevelpanel, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -369,6 +384,36 @@ void ui_ConfigScreen_screen_init(void)
     lv_obj_add_flag(ui_debuglevelodropdown, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
     lv_obj_set_style_text_font(ui_debuglevelodropdown, &lv_font_montserrat_12, LV_PART_MAIN | LV_STATE_DEFAULT);
 
+    ui_debuginterfacepanel = lv_obj_create(ui_ConfigScreen);
+    lv_obj_set_width(ui_debuginterfacepanel, 155);
+    lv_obj_set_height(ui_debuginterfacepanel, 64);
+    lv_obj_set_x(ui_debuginterfacepanel, -79);
+    lv_obj_set_y(ui_debuginterfacepanel, 0);
+    lv_obj_set_align(ui_debuginterfacepanel, LV_ALIGN_CENTER);
+    lv_obj_set_flex_flow(ui_debuginterfacepanel, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(ui_debuginterfacepanel, LV_FLEX_ALIGN_SPACE_EVENLY, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_clear_flag(ui_debuginterfacepanel, LV_OBJ_FLAG_SCROLLABLE);
+
+    ui_debuginterfacelabel = lv_label_create(ui_debuginterfacepanel);
+    lv_obj_set_width(ui_debuginterfacelabel, LV_SIZE_CONTENT);
+    lv_obj_set_height(ui_debuginterfacelabel, LV_SIZE_CONTENT);
+    lv_obj_set_align(ui_debuginterfacelabel, LV_ALIGN_CENTER);
+    lv_label_set_text(ui_debuginterfacelabel, "Interface");
+
+    ui_debuginterfacedropdown = lv_dropdown_create(ui_debuginterfacepanel);
+    lv_dropdown_set_options(ui_debuginterfacedropdown, "jtag\nswd");
+    lv_obj_set_width(ui_debuginterfacedropdown, 71);
+    lv_obj_set_height(ui_debuginterfacedropdown, LV_SIZE_CONTENT);
+    lv_obj_set_align(ui_debuginterfacedropdown, LV_ALIGN_CENTER);
+    lv_obj_add_flag(ui_debuginterfacedropdown, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
+    lv_obj_set_style_text_color(ui_debuginterfacedropdown, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_debuginterfacedropdown, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui_debuginterfacedropdown, lv_color_hex(0x0092D4), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui_debuginterfacedropdown, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    lv_obj_set_style_text_color(ui_debuginterfacedropdown, lv_color_hex(0xFFFFFF), LV_PART_INDICATOR | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui_debuginterfacedropdown, 255, LV_PART_INDICATOR | LV_STATE_DEFAULT);
+
     lv_obj_add_event_cb(ui_targetselectdropdown, ui_event_targetselectdropdown, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_resetbutton, ui_event_resetbutton, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_runbutton, ui_event_runbutton, LV_EVENT_ALL, NULL);
@@ -376,6 +421,7 @@ void ui_ConfigScreen_screen_init(void)
     lv_obj_add_event_cb(ui_flashsupportcheckbox, ui_event_flashsupportcheckbox, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_dualcorecheckbox, ui_event_dualcorecheckbox, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_debuglevelodropdown, ui_event_debuglevelodropdown, LV_EVENT_ALL, NULL);
+    lv_obj_add_event_cb(ui_debuginterfacedropdown, ui_event_debuginterfacedropdown, LV_EVENT_ALL, NULL);
     lv_obj_add_event_cb(ui_ConfigScreen, ui_event_ConfigScreen, LV_EVENT_ALL, NULL);
 }
 

@@ -185,7 +185,7 @@ static esp_err_t set_openocd_config_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
-    const char *keys[] = {OOCD_C_PARAM_KEY, OOCD_D_PARAM_KEY, OOCD_F_PARAM_KEY, DUAL_CORE_KEY, FLASH_SUPPORT_KEY, RTOS_KEY};
+    const char *keys[] = {OOCD_INTERFACE_PARAM_KEY, OOCD_C_PARAM_KEY, OOCD_D_PARAM_KEY, OOCD_F_PARAM_KEY, DUAL_CORE_KEY, FLASH_SUPPORT_KEY, RTOS_KEY};
     for (int i = 0; i < sizeof(keys) / sizeof(char *); i++) {
         cJSON *param = cJSON_GetObjectItem(json, keys[i]);
         if (param != NULL && param->valuestring != NULL) {
@@ -304,6 +304,7 @@ static esp_err_t load_main_page(httpd_req_t *req)
     web_server_set_checkbox(req, "flashSupport", oocd_config.flash_support);
     web_server_set_dropdown(req, "rtos", oocd_config.rtos);
     web_server_set_dropdown(req, "dCommand", oocd_config.debug_level_index);
+    web_server_set_dropdown(req, "debugInterface", oocd_config.interface_index);
     /* Run the file param changes manually in first load */
     httpd_resp_sendstr_chunk(req, "<script>fileParamOnChange()</script>");
 

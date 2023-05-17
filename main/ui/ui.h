@@ -50,6 +50,10 @@ extern lv_obj_t *ui_debuglevelpanel;
 extern lv_obj_t *ui_debuglevellabel;
 void ui_event_debuglevelodropdown(lv_event_t *e);
 extern lv_obj_t *ui_debuglevelodropdown;
+extern lv_obj_t *ui_debuginterfacepanel;
+extern lv_obj_t *ui_debuginterfacelabel;
+void ui_event_debuginterfacedropdown(lv_event_t *e);
+extern lv_obj_t *ui_debuginterfacedropdown;
 extern lv_obj_t *ui_messagebox;
 
 void target_select_dropdown_handler(lv_event_t *e);
@@ -59,6 +63,7 @@ void rtos_support_dropdown_handler(lv_event_t *e);
 void flash_support_checkbox_handler(lv_event_t *e);
 void dual_core_checkbox_handler(lv_event_t *e);
 void debug_level_dropdown_handler(lv_event_t *e);
+void debug_interface_dropdown_handler(lv_event_t *e);
 
 void ui_set_target_menu(void);
 void ui_init(void);

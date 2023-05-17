@@ -51,6 +51,16 @@
                 </tr>
                 <tr>
                     <td>
+                        <label for="debugInterface">Debug Interface:</label>
+                    </td>
+                    <td>
+                        <select name="debugInterface" id="debugInterface">
+                            <option value="jtag">jtag</option>
+                            <option value="swd">swd</option>
+                        </select>
+                    </td>
+                <tr>
+                    <td>
                         <label for="fCommand">--file/-f:</label>
                     </td>
                     <td>
@@ -196,6 +206,7 @@
     }
 
     function setOpenocdConfig(sendCredentials=false) {
+        var debugInterfaceDropdown = document.getElementById("debugInterface");
         var fCommand = document.getElementById("fCommand");
         var cCommand = document.getElementById("cCommand").value;
         var dDropdown = document.getElementById("dCommand");
@@ -212,6 +223,7 @@
 
         var flags= ["-f", "--file", "-c", "--command", "--debug", "-d"]
 
+        var interfaceStr = (debugInterfaceDropdown.selectedIndex == 0 ? "interface/esp32_gpio_jtag.cfg" : "interface/esp32_gpio_swd.cfg");
         var rtosIndexText = rtosDropdown.options[rtosDropdown.selectedIndex].text;
 
         var cParamStr = "";
@@ -238,7 +250,7 @@
         flashSupport = (flashSupport == false ? "0" : "1");
         dualCore = (flashSupport == false ? "0" : "1");
 
-        var jsonStr = {command: cParamStr, debug: dParamStr, file: fParamStr, dual_core: dualCore, flash_support: flashSupport, rtos: rtosIndex};
+        var jsonStr = {interface: interfaceStr, command: cParamStr, debug: dParamStr, file: fParamStr, dual_core: dualCore, flash_support: flashSupport, rtos: rtosIndex};
 
         console.log(jsonStr)
 
