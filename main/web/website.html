@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>OpenOCD on ESP32</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #243b55;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 20px;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 2px;
+      }
+
+      header img {
+        max-width: 200px;
+      }
+
+      footer {
+        padding: 10px;
+        text-align: right;
+        font-size: 14px;
+        color: white;
+      }
+
+      .tabs {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+
+      .tab {
+        flex: 1;
+        padding: 10px;
+        background-color: #ddd;
+        text-align: center;
+        cursor: pointer;
+        border-radius: 2px;
+      }
+
+      .tab.active {
+        background-color: #fff;
+        color: #E11E1E;
+      }
+
+      .form-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+
+      .form-column {
+        flex: 1;
+        margin-right: 10px;
+      }
+
+      .form-container {
+        display: none;
+      }
+
+      form {
+        max-width: 400px;
+        margin: 0 auto;
+        margin-bottom: 50px;
+        padding: 20px;
+        background-color: #f4f4f4;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      input[type="text"],
+      input[type="password"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+
+      select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+
+      button {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        margin-top: 20px;
+        background-color: #344562;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        opacity: 0.7;
+      }
+
+      .caption {
+        text-align: center;
+        font-weight: bold;
+        font-size: 20px;
+        margin-bottom: 20px;
+      }
+
+      .panel {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 20px;
+      }
+
+      .panel .form-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .panel .form-row label {
+        margin-right: 10px;
+      }
+
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 20px;
+      }
+
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .slider {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        border-radius: 20px;
+        transition: 0.4s;
+      }
+
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 2px;
+        bottom: 2px;
+        background-color: white;
+        border-radius: 50%;
+        transition: 0.4s;
+      }
+
+      input:checked + .slider {
+        background-color: #0272B7;
+      }
+
+      input:checked + .slider:before {
+        transform: translateX(20px);
+      }
+
+      .file-upload input[type="file"]::-webkit-file-upload-button {
+        padding: 10px 20px;
+        background-color: #344562;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .file-upload input[type="file"]::-webkit-file-upload-button:hover {
+        background-color: #243b55;
+      }
+
+      .file-name {
+        font-weight: normal;
+      }
+
+      .delete-button {
+        background-color: #E11E1E;
+        border: none;
+        color: white;
+        width: 190px;
+        align-items: center;
+        padding: 10px;
+        margin: 20px 0px 0px 15px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .upload-button{
+        background-color: #243b55;
+        border: none;
+        color: white;
+        width: 190px;
+        align-items: center;
+        padding: 10px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 13px;
+        margin: 20px 0px 0px;
+        cursor: pointer;
+      }
+
+    </style>
+  </head>
+  <body>
+    <header>
+      <img src="esp_logo.svg" alt="Espressif">
+    </header>
+
+    <div class="tabs">
+      <div class="tab active" id="wifi-tab" onclick="showTab('wifi-tab')">Wi-Fi Credentials</div>
+      <div class="tab" id="openocd-tab" onclick="showTab('openocd-tab')">OpenOCD Configuration</div>
+    </div>
+
+    <div id="wifi-tab-form" class="form-container">
+      <form>
+        <label for="ssid">SSID</label>
+        <input type="text" id="ssid" required><br><br>
+
+        <label for="password">Password</label>
+        <input type="password" id="password" required><br><br>
+
+        <button type="button" onclick="sendCredentials()">Send your local network settings to ESP Debugger</button>
+      </form>
+    </div>
+
+    <div id="openocd-tab-form" class="form-container">
+      <form>
+        <label for="config">Target</label>
+        <select id="config" required></select><br><br>
+
+        <div class="form-row">
+          <div class="form-column">
+            <label for="interface">Interface</label>
+            <select id="interface" required>
+              <option value=0>jtag</option>
+              <option value=1>swd</option>
+            </select>
+          </div>
+          <div class="form-column">
+            <label for="rtos">Rtos</label>
+            <select id="rtos" required></select>
+          </div>
+          <div class="form-column">
+            <label for="debug">Debug level</label>
+            <select id="debug" required>
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="form-row">
+            <label for="dual-core">Dual-core</label>
+            <label class="switch">
+              <input type="checkbox" id="dual-core" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="form-row">
+            <label for="flash-support">Flash support</label>
+            <label class="switch">
+              <input type="checkbox" id="flash-support" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <label for="c-param">Command line args</label>
+        <input type="text" id="c-param" required><br><br>
+
+        <button type="button" onclick="sendOpenocdConfig()">Send to ESP Debugger</button>
+      </form>
+
+      <form>
+        <div class="file-upload">
+          <input type="file" id="file-input" accept=".cfg" onchange="handleFileInputChange()">
+          <button type="button" id="upload-button"  class="upload-button" disabled onclick="UploadFile()">Upload a new config file</button>
+          <button type="button" id="delete-button" class="delete-button" onclick="DeleteFile()">Delete a config file</button>
+        </div>
+      </form>
+
+    </div>
+
+    <footer>
+      <span style="float: right;">&copy; 2023 ChatGPT by OpenAI</span>
+    </footer>
+
+    <script>
+
+      function handleFileInputChange() {
+        document.getElementById("upload-button").disabled = false;
+      }
+
+      function UploadFile() {
+          var fileInput = document.getElementById("file-input");
+          var fileName = fileInput.value.split("\\").pop();
+
+          console.log("File name:", fileName);
+          console.log("File size:", fileInput.files[0].size);
+
+          sendData("/upload/" + fileName, fileInput.files[0]);
+      }
+
+      function DeleteFile() {
+          var fileName = document.getElementById("config").value;
+
+          console.log("File name:", fileName);
+
+          var confirmed = confirm("Are you sure you want to delete the config file " + fileName);
+
+          if (!confirmed) {
+            return; // User cancelled the deletion
+          }
+
+          sendData("/delete/" + fileName, fileName);
+      }
+
+      var lastActiveTab = "wifi-tab"; // Initialize with a default value
+
+      function showTab(tabId) {
+        // Hide all form containers and deactivate all tabs
+        var formContainers = document.getElementsByClassName("form-container");
+        for (var i = 0; i < formContainers.length; i++) {
+          formContainers[i].style.display = "none";
+        }
+
+        var tabs = document.getElementsByClassName("tab");
+        for (var i = 0; i < tabs.length; i++) {
+          tabs[i].classList.remove("active");
+        }
+
+        // Show the selected form container and activate the corresponding tab
+        var formContainer = document.getElementById(tabId + "-form");
+        formContainer.style.display = "block";
+
+        var tab = document.getElementById(tabId);
+        tab.classList.add("active");
+
+        // Update the last active tab
+        lastActiveTab = tabId;
+      }
+
+      // Show the initial active tab
+      showTab(lastActiveTab);
+
+      // Populate target and rtos list from the server
+      getOpenocdConfig();
+
+      function getOpenocdConfig() {
+        var configDropdown = document.getElementById("config");
+
+        // Make a GET request to the server
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+          if (xhttp.readyState == 4) {
+            if (xhttp.status == 200) {
+              // Parse the JSON response
+              var responseData = JSON.parse(xhttp.responseText);
+
+              // Log the received data in the console
+              console.log("Received data:", responseData);
+
+              // Create option elements and append them to the dropdown
+              populateDropdowns(responseData);
+            } else {
+              console.error("Error:", xhttp.status, xhttp.responseText);
+            }
+          }
+        };
+
+        xhttp.open("GET", "get_openocd_config", true);
+        xhttp.send();
+      }
+
+      function populateDropdowns(jsonData) {
+        // Get the config and rtos dropdown elements
+        var configDropdown = document.getElementById("config");
+        var rtosDropdown = document.getElementById("rtos");
+
+        // Clear existing options
+        configDropdown.innerHTML = "";
+        rtosDropdown.innerHTML = "";
+
+        // Populate the config dropdown
+        for (var i = 0; i < jsonData.configList.length; i++) {
+          var option = document.createElement("option");
+          option.text = jsonData.configList[i];
+          configDropdown.add(option);
+        }
+
+        // Populate the rtos dropdown
+        for (var i = 0; i < jsonData.rtosList.length; i++) {
+          var option = document.createElement("option");
+          option.text = jsonData.rtosList[i];
+          rtosDropdown.add(option);
+        }
+      }
+
+      function sendCredentials() {
+        // Get the form inputs
+        var ssid = document.getElementById("ssid").value;
+        var password = document.getElementById("password").value;
+
+        // Check if the SSID field is empty
+        if (ssid === "") {
+          // Display a warning message
+          var warningMessage = document.createElement("div");
+          warningMessage.style.color = "red";
+          warningMessage.textContent = "Please enter the SSID.";
+          var formContainer = document.getElementById("wifi-tab-form");
+          formContainer.appendChild(warningMessage);
+
+          // Hide the warning message after 3 seconds
+          setTimeout(function() {
+            formContainer.removeChild(warningMessage);
+          }, 2000);
+
+          return; // Stop further execution of the function
+        }
+
+        // Perform the data sending logic here...
+        console.log("Sending data to the server...");
+        console.log("SSID:", ssid);
+        console.log("Password:", password);
+
+        var wifiJson = {ssid: ssid, pass: password};
+        var jsonStr = JSON.stringify(wifiJson)
+        console.log("jsonStr:", jsonStr)
+        sendData("/set_credentials", jsonStr, 'application/json');
+      }
+
+      function sendOpenocdConfig() {
+        // Get the form inputs
+        var target = document.getElementById("config").value;
+        var interface = document.getElementById("interface").value;
+        var rtos = document.getElementById("rtos").value;
+        var debug = document.getElementById("debug").value;
+        var dualCore = document.getElementById("dual-core").checked;
+        var flashSupport = document.getElementById("flash-support").checked;
+        var cParam = document.getElementById("c-param").value;
+
+        // Perform the data sending logic here...
+        console.log("Sending data to the server...");
+        console.log("Target:", target);
+        console.log("Interface:", interface);
+        console.log("Rtos:", rtos);
+        console.log("Debug level:", debug);
+        console.log("Dual-core:", dualCore);
+        console.log("Flash support:", flashSupport);
+        console.log("-c parameter:", cParam);
+
+        var configJson = {target: target, interface: interface, rtos: rtos, debug: debug, dualCore: dualCore, flash: flashSupport, cParam: cParam};
+        var jsonStr = JSON.stringify(configJson)
+        console.log("jsonStr:", jsonStr)
+        sendData("/set_openocd_config", jsonStr, 'application/json');
+      }
+
+      function sendData(path, data = null, contentType = "text/plain") {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+          if (xhttp.readyState == 4) {
+            if (xhttp.status == 200) {
+              handleSuccessResponse(xhttp.responseText);
+            } else if (xhttp.status == 0) {
+              handleConnectionClosed();
+            } else {
+              handleErrorResponse(xhttp.status, xhttp.responseText);
+            }
+          }
+        };
+        xhttp.open("POST", path, true);
+        xhttp.setRequestHeader("Content-Type", contentType);
+        xhttp.send(data);
+      }
+
+      function handleSuccessResponse(responseText) {
+        document.open();
+        document.write(responseText);
+        document.close();
+        showMessage("", responseText);
+      }
+
+      function handleConnectionClosed() {
+        showMessage("Error", "The server connection was unexpectedly terminated!");
+      }
+
+      function handleErrorResponse(status, responseText) {
+        showMessage(status + " Error!", responseText);
+      }
+
+      function showMessage(title, message) {
+        alert(title + "\n" + message);
+        location.reload();
+      }
+
+    </script>
+  </body>
+</html>

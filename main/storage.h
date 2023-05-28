@@ -1,42 +1,29 @@
-#ifndef __STORAGE_H__
-#define __STORAGE_H__
+#pragma once
 
-#define OOCD_INTERFACE_PARAM_KEY    "interface"
-#define OOCD_F_PARAM_KEY            "file"
-#define OOCD_C_PARAM_KEY            "command"
-#define OOCD_D_PARAM_KEY            "debug"
-#define CONNECTION_TYPE_KEY         "connection"
-#define DUAL_CORE_KEY               "dual_core"
-#define FLASH_SUPPORT_KEY           "flash_support"
-#define RTOS_KEY                    "rtos"
-#define CONFIG_FILES_PATH           "/data/target/"
-#define TARGET_PATH_PRELIM          "target/"
+#include "esp_err.h"
 
-struct esp_oocd_config {
-    bool dual_core;
-    bool flash_support;
-    int rtos;
-    int target_index;
-    int debug_level_index;
-    int interface_index;
-};
-extern struct esp_oocd_config oocd_config;
+/* OpenOCD params */
+#define OOCD_CFG_FILE_KEY           "file"
+#define OOCD_RTOS_TYPE_KEY          "rtos"
+#define OOCD_DUAL_CORE_KEY          "smp"
+#define OOCD_FLASH_SUPPORT_KEY      "flash"
+#define OOCD_INTERFACE_KEY          "interface"
+#define OOCD_CMD_LINE_ARGS_KEY      "command"
+#define OOCD_DBG_LEVEL_KEY          "debug"
 
-esp_err_t storage_get_openocd_config(void);
+/* Network params */
+#define WIFI_SSID_KEY               "ssid"
+#define WIFI_PASS_KEY               "pass"
+
+#define CFG_FILE_PATH               "/data/target/"
+
 esp_err_t storage_init_filesystem(void);
-esp_err_t storage_nvs_write(const char *key, const char *value, size_t size);
-esp_err_t storage_nvs_read(const char *key, char *value, size_t size);
-esp_err_t storage_nvs_erase_key(const char *key);
-esp_err_t storage_nvs_erase_everything(void);
-esp_err_t storage_nvs_read_param(char *key, char **value);
-esp_err_t storage_save_credentials(const char *ssid, const char *pass);
-esp_err_t storage_get_target_path(const char *target_name, char **path);
-esp_err_t storage_get_target_name_from_index(int index, char **target_name);
-size_t storage_nvs_get_value_length(const char *key);
-bool storage_nvs_is_key_exist(const char *key);
-char *storage_get_config_files(char *path, bool filter, int *file_count);
-int storage_get_file_size(const char *file_name);
-bool storage_is_target_single_core(char *target_name);
-char *storage_get_target_names(bool update);
-
-#endif
+esp_err_t storage_write(const char *key, const char *value, size_t len);
+esp_err_t storage_read(const char *key, char *value, size_t len);
+esp_err_t storage_erase_key(const char *key);
+size_t storage_get_value_length(const char *key);
+bool storage_is_key_exist(const char *key);
+esp_err_t storage_erase_all(void);
+esp_err_t storage_alloc_and_read(char *key, char **value);
+esp_err_t storage_update_target_struct(void);
+esp_err_t storage_update_rtos_struct(void);

@@ -9,15 +9,12 @@
 #include "esp_vfs_fat.h"
 
 #include "storage.h"
-#include "networking.h"
-#include "log.h"
+#include "ui.h"
+#include "types.h"
 
-#define STORAGE_NAMESPACE           "NVS_DATA"
+#define STORAGE_NAMESPACE   "nvs"
 
 static const char *TAG = "storage";
-
-struct esp_oocd_config oocd_config;
-int files_count = 0;
 
 esp_err_t storage_init_filesystem(void)
 {
@@ -45,7 +42,7 @@ esp_err_t storage_init_filesystem(void)
     size_t total = 0, used = 0;
     ret = esp_vfs_fat_info("/data", &total, &used);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get SPIFFS partition information (%s)", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to get FATFS partition information (%s)", esp_err_to_name(ret));
         return ret;
     } else {
         ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
@@ -53,390 +50,253 @@ esp_err_t storage_init_filesystem(void)
     return ESP_OK;
 }
 
-esp_err_t storage_nvs_write(const char *key, const char *value, size_t size)
+esp_err_t storage_write(const char *key, const char *value, size_t len)
 {
+    if (!key) {
+        ESP_LOGE(TAG, "Key is NULL!");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     nvs_handle_t my_handle;
 
-    OOCD_RETURN_ON_ERROR((!key || !value), TAG, "Key or Value is NULL");
-    OOCD_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
-    OOCD_RETURN_ON_ERROR(nvs_set_blob(my_handle, key, value, size), TAG, "Failed to set blob \"%s\"", key);
-    OOCD_RETURN_ON_ERROR(nvs_commit(my_handle), TAG, "Failed save changes");
+    esp_err_t esp_err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (esp_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open nvs namespace! (%s)", esp_err_to_name(esp_err));
+        return esp_err;
+    }
+
+    esp_err = nvs_set_blob(my_handle, key, value, len);
+    if (esp_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set blob! (%s)-(%s)", key, esp_err_to_name(esp_err));
+        nvs_close(my_handle);
+        return esp_err;
+    }
+
+    esp_err = nvs_commit(my_handle);
+    if (esp_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed save changes! (%s)", esp_err_to_name(esp_err));
+    }
     nvs_close(my_handle);
 
-    return ESP_OK;
+    return esp_err;
 }
 
-esp_err_t storage_nvs_read(const char *key, char *value, size_t size)
+esp_err_t storage_read(const char *key, char *value, size_t len)
 {
-    nvs_handle_t my_handle;
-    size_t n_bytes = size;
+    if (!key) {
+        ESP_LOGE(TAG, "Key is NULL!");
+        return ESP_ERR_INVALID_ARG;
+    }
 
-    OOCD_RETURN_ON_ERROR(!key, TAG, "Key is NULL");
-    OOCD_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
-    OOCD_RETURN_ON_ERROR(nvs_get_blob(my_handle, key, value, &n_bytes), TAG, "Failed to get blob \"%s\"", key);
+    nvs_handle_t my_handle;
+
+    esp_err_t esp_err = nvs_open(STORAGE_NAMESPACE, NVS_READONLY, &my_handle);
+    if (esp_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open nvs namespace! (%s)", esp_err_to_name(esp_err));
+        return esp_err;
+    }
+
+    size_t n_bytes = len;
+
+    esp_err = nvs_get_blob(my_handle, key, value, &n_bytes);
+    if (esp_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get blob (%s)-(%s)", key, esp_err_to_name(esp_err));
+    }
+
     nvs_close(my_handle);
 
-    if (n_bytes != size) {
+    if (esp_err == ESP_OK && n_bytes != len) {
+        ESP_LOGE(TAG, "Expected len (%d) actual len (%d)", len, n_bytes);
         return ESP_FAIL;
     }
 
-    return ESP_OK;
+    return esp_err;
 }
 
-int storage_nvs_erase_key(const char *key)
+esp_err_t storage_erase_key(const char *key)
 {
+    if (!key) {
+        ESP_LOGE(TAG, "Key is NULL!");
+        return ESP_ERR_INVALID_ARG;
+    }
+
     nvs_handle_t my_handle;
 
-    OOCD_RETURN_ON_ERROR(!key, TAG, "Key is NULL");
-    OOCD_RETURN_ON_ERROR(nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle), TAG, "Failed to open namespace");
-    OOCD_RETURN_ON_ERROR(nvs_erase_key(my_handle, key), TAG, "Failed to erase \"%s\"", key);
+    esp_err_t esp_err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
+    if (esp_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open nvs namespace! (%s)", esp_err_to_name(esp_err));
+        return esp_err;
+    }
+
+    esp_err = nvs_erase_key(my_handle, key);
+    if (esp_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to erase (%s)", key, esp_err_to_name(esp_err));
+    }
+
+    nvs_commit(my_handle);
     nvs_close(my_handle);
 
-    return ESP_OK;
+    return esp_err;
 }
 
-size_t storage_nvs_get_value_length(const char *key)
+size_t storage_get_value_length(const char *key)
 {
-    nvs_handle_t my_handle;
-    size_t length;
-
     if (!key) {
         ESP_LOGE(TAG, "Key is NULL");
         return 0;
     }
 
-    esp_err_t ret = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &my_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to open namespace");
+    nvs_handle_t nvs;
+
+    esp_err_t esp_err = nvs_open(STORAGE_NAMESPACE, NVS_READONLY, &nvs);
+    if (esp_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open namespace err:(%s)", esp_err_to_name(esp_err));
         return 0;
     }
 
-    ret = nvs_get_blob(my_handle, key, NULL, &length);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get blob \"%s\"", key);
-        return 0;
+    size_t length = 0;
+
+    esp_err = nvs_get_blob(nvs, key, NULL, &length);
+    if (esp_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get blob (%s)-(%s)", key, esp_err_to_name(esp_err));
     }
 
-    nvs_close(my_handle);
+    nvs_close(nvs);
 
     return length;
 }
 
-bool storage_nvs_is_key_exist(const char *key)
+bool storage_is_key_exist(const char *key)
 {
-    return storage_nvs_get_value_length(key) > 0;
+    return storage_get_value_length(key) > 0;
 }
 
-esp_err_t storage_nvs_erase_everything(void)
+esp_err_t storage_erase_all(void)
 {
-    return nvs_flash_erase();
-}
+    nvs_handle_t nvs;
 
-static bool will_be_filtered(const char *file_name)
-{
-    const char *filtered_files[] = {"esp_common.cfg", "xtensa-core-esp32", "stm32f1x", "swj-dp"};
-
-    for (int i = 0; i < sizeof(filtered_files) / sizeof(char *); i++) {
-        if (strstr(file_name, filtered_files[i]) != NULL) {
-            return true;
+    esp_err_t err = nvs_open(STORAGE_NAMESPACE, NVS_READWRITE, &nvs);
+    if (err == ESP_OK) {
+        err = nvs_erase_all(nvs);
+        if (err == ESP_OK) {
+            err = nvs_commit(nvs);
         }
     }
-    return false;
+
+    ESP_LOGI(TAG, "Namespace '%s' was %s erased", STORAGE_NAMESPACE, (err == ESP_OK) ? "" : "not");
+    nvs_close(nvs);
+    return ESP_OK;
 }
 
-char *storage_get_config_files(char *path, bool filter, int *file_count)
+esp_err_t storage_alloc_and_read(char *key, char **value)
 {
-    if (!path) {
-        ESP_LOGE(TAG, "Path value is NULL");
-        return NULL;
-    }
-
-    DIR *d;
-    struct dirent *dir;
-    char *str = NULL;
-
-    d = opendir(path);
-    if (!d) {
-        ESP_LOGE(TAG, "Could not open the directory");
-        return NULL;
-    }
-
-    while ((dir = readdir(d)) != NULL) {
-        if (dir->d_type == DT_DIR) {
-            continue;
-        }
-        if (str == NULL) {
-            str = (char *) calloc(sizeof(dir->d_name), sizeof(char));
-            if (!str) {
-                ESP_LOGE(TAG, "Allocation error during fetch config file names");
-                return NULL;
-            }
-            strcpy(str, dir->d_name);
-            (*file_count)++;
-        } else {
-            if (!filter || !will_be_filtered(dir->d_name)) {
-                (*file_count)++;
-                int current_length = strlen(dir->d_name) + strlen(str) + 1 + 1;
-                if (current_length > sizeof(dir->d_name)) {
-                    char *tmp_str = (char *) calloc(current_length, sizeof(char));
-                    if (!tmp_str) {
-                        ESP_LOGE(TAG, "Allocation error");
-                        free(str);
-                        closedir(d);
-                        return NULL;
-                    }
-                    strcpy(tmp_str, str);
-                    free(str);
-                    str = tmp_str;
-                }
-                str = strcat(str, "\n");
-                str = strcat(str, dir->d_name);
-            }
-        }
-    }
-    closedir(d);
-
-    return str;
-}
-
-esp_err_t storage_nvs_read_param(char *key, char **value)
-{
-    if (!key || !value) {
+    if (!key) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    /* First read length of the config string */
-    size_t len = storage_nvs_get_value_length(key);
+    /* First read length of the config string. */
+    size_t len = storage_get_value_length(key);
     if (len == 0) {
         return ESP_FAIL;
     }
 
-    /* allocate memory for the null terminated string */
-    char *ptr = (char *)calloc(len + 1, sizeof(char));
+    char *ptr = (char *)calloc(1, len + 1);
     if (!ptr) {
         ESP_LOGE(TAG, "Failed to allocate memory");
         return ESP_FAIL;
     }
 
-    esp_err_t ret_nvs = storage_nvs_read(key, ptr, len);
-    if (ret_nvs != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to get %s command", key);
+    esp_err_t esp_err = storage_read(key, ptr, len);
+    if (esp_err != ESP_OK) {
         free(ptr);
-        return ESP_FAIL;
+        return esp_err;
     }
+
+    ESP_LOGI(TAG, "Read val:%s len:%d", ptr, len);
 
     *value = ptr;
 
     return ESP_OK;
 }
 
-int storage_get_file_size(const char *file_name)
+esp_err_t storage_update_target_struct(void)
 {
-    int size = -1;
-
-    if (!file_name) {
-        ESP_LOGE(TAG, "File name is NULL");
-        return size;
-    }
-
-    char *path = (char *)calloc(strlen(CONFIG_FILES_PATH) + strlen(file_name) + 1, sizeof(char));
-    if (!path) {
-        ESP_LOGE(TAG, "Allocation error");
-    } else {
-        strcpy(path, CONFIG_FILES_PATH);
-        strcpy(path + strlen(CONFIG_FILES_PATH), file_name);
-        struct stat file_stat;
-        if (stat(path, &file_stat) == 0) {
-            size = file_stat.st_size;
+    /* first, remove old records */
+    if (g_app_params.target_list) {
+        for (size_t i = 0; i < g_app_params.target_count; ++i) {
+            free((void *)g_app_params.target_list[i]);
         }
-        free(path);
+        free(g_app_params.target_list);
+        g_app_params.target_list = NULL;
     }
 
-    return size;
-}
-
-esp_err_t storage_save_credentials(const char *ssid, const char *pass)
-{
-    if (!ssid || !pass) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    int ret = storage_nvs_write(SSID_KEY, ssid, SSID_LENGTH);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to save SSID (%d)", ret);
-        return ret;
-    }
-
-    ret = storage_nvs_write(PASSWORD_KEY, pass, PASSWORD_LENGTH);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to save WiFi password (%d)", ret);
-        return ret;
-    }
-
-    char tmp = WIFI_STA_MODE;
-    ret = storage_nvs_write(WIFI_MODE_KEY, &tmp, 1);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to save WiFi password (%d)", ret);
-        return ret;
-    }
-    return ESP_OK;
-}
-
-static int get_index_from_target_name(char *target_name)
-{
-    char *tmp_target_list = storage_get_target_names(false);
-    char *targets = (char *)calloc(strlen(tmp_target_list) + 1, sizeof(char));
-    if (!targets) {
-        ESP_LOGE(TAG, "Allocation error");
-        return -1;
-    }
-    int i = 0;
-    char *delimiter = "\n";
-    strcpy(targets, tmp_target_list);
-    char *str = strtok(targets, delimiter);
-    while (str != NULL)  {
-        if (strcmp(target_name, str) == 0) {
-            free(targets);
-            return i;
-        }
-        str = strtok(NULL, delimiter);
-        i++;
-    }
-
-    free(targets);
-    return -1;
-}
-
-esp_err_t storage_get_target_name_from_index(int index, char **target_name)
-{
-    char *tmp_target_list = storage_get_target_names(false);
-    char *targets = (char *)calloc(strlen(tmp_target_list) + 1, sizeof(char));
-    if (!targets) {
-        ESP_LOGE(TAG, "Allocation error");
+    DIR *d = opendir(CFG_FILE_PATH);
+    if (!d) {
+        ESP_LOGE(TAG, "Could not open the directory");
         return ESP_FAIL;
     }
 
-    strcpy(targets, tmp_target_list);
+    struct dirent *dir;
+    size_t target_list_size = 20; /* default size */
 
-    char *delimiter = "\n";
-    int i = 0;
-    char *str = strtok(targets, delimiter);
-
-    while (i != index) {
-        str = strtok (NULL, delimiter);
-        i++;
-    }
-
-    char *ret_str = (char *)calloc(strlen(str) + 1, sizeof(char));
-    if (!ret_str) {
-        free(targets);
-        ESP_LOGE(TAG, "Allocation error");
+    g_app_params.target_list = calloc(target_list_size, sizeof(*g_app_params.target_list));
+    if (!g_app_params.target_list) {
+        ESP_LOGE(TAG, "Could not allocate memory for the target list (%d)", target_list_size);
         return ESP_FAIL;
     }
 
-    strcpy(ret_str, str);
-    free(targets);
+    int target_count = 0;
 
-    *target_name = ret_str;
-    return ESP_OK;
-}
-
-bool storage_is_target_single_core(char *target_name)
-{
-    if (!target_name) {
-        ESP_LOGE(TAG, "Target name is NULL");
-        return false;
-    }
-
-    const char *multi_core_targets[] = {"esp32.cfg", "esp32s3.cfg"};
-
-    for (int i = 0; i < sizeof(multi_core_targets) / sizeof(char *); i++) {
-        if (strcmp(multi_core_targets[i], target_name) == 0) {
-            return false;
+    while ((dir = readdir(d)) != NULL) {
+        if (dir->d_type == DT_DIR) {
+            continue;
+        }
+        g_app_params.target_list[target_count++] = strdup(dir->d_name);
+        g_app_params.target_count = target_count;
+        if (target_count >= target_list_size) {
+            target_list_size *= 2;
+            const char **new_target_list = realloc(g_app_params.target_list, sizeof(*g_app_params.target_list) * target_list_size);
+            if (!new_target_list) {
+                ESP_LOGE(TAG, "Could not allocate memory for the target list (%u)", target_list_size);
+                return ESP_FAIL;
+            }
+            g_app_params.target_list = new_target_list;
         }
     }
-    return true;
-}
 
-esp_err_t storage_get_openocd_config(void)
-{
-    char option;
-    oocd_config.dual_core = true;
-    oocd_config.flash_support = true;
-    oocd_config.rtos = 0;
-    oocd_config.target_index = 0;
-    oocd_config.debug_level_index = 0;
-    oocd_config.interface_index = 0;
+    closedir(d);
 
-    int ret_nvs = storage_nvs_read(DUAL_CORE_KEY, &option, 1);
-    if (ret_nvs == ESP_OK && option == '0') {
-        oocd_config.dual_core = false;
-    }
-
-    ret_nvs = storage_nvs_read(FLASH_SUPPORT_KEY, &option, 1);
-    if (ret_nvs == ESP_OK && option == '0') {
-        oocd_config.flash_support = false;
-    }
-
-    ret_nvs = storage_nvs_read(RTOS_KEY, &option, 1);
-    if (ret_nvs == ESP_OK) {
-        oocd_config.rtos = option;
-    }
-
-    char *param = NULL;
-    ret_nvs = storage_nvs_read_param(OOCD_F_PARAM_KEY, &param);
-    if (ret_nvs == ESP_OK) {
-        int index = get_index_from_target_name(param + strlen(TARGET_PATH_PRELIM));
-        if (index != -1) {
-            oocd_config.target_index = index;
+    for (size_t i = 0; i < g_app_params.target_count; ++i) {
+        if (!strcmp(g_app_params.target_list[i], g_app_params.config_file)) {
+            g_app_params.selected_target_index = i;
+            break;
         }
     }
-    free(param);
-    param = NULL;
 
-    ret_nvs = storage_nvs_read_param(OOCD_INTERFACE_PARAM_KEY, &param);
-    if (ret_nvs == ESP_OK) {
-        const char swd_interface[] = "interface/esp32_gpio_swd.cfg";
-        if (!strcmp(param, swd_interface)) {
-            oocd_config.interface_index = 1;
-        }
-    }
-    free(param);
-    param = NULL;
-
-    ret_nvs = storage_nvs_read_param(OOCD_D_PARAM_KEY, &param);
-    if (ret_nvs == ESP_OK) {
-        oocd_config.debug_level_index = param[strlen(param) - 1] - 48 - 2;
-    }
-    free(param);
-    param = NULL;
+    ui_update_target_list(g_app_params.selected_target_index);
 
     return ESP_OK;
 }
 
-char *storage_get_target_names(bool update)
+esp_err_t storage_update_rtos_struct(void)
 {
-    static char *target_list = NULL;
-    if (!update) {
-        return target_list;
-    } else if (target_list != NULL) {
-        free(target_list);
+    static const char *rtos_names[] = {
+        "FreeRTOS", "nuttx", "Zephyr", "hwthread",
+        "ThreadX", "eCos", "linux", "chibios", "Chromium-EC",
+        "embKernel", "mqx", "uCOS-III",  "rtkernel", "none"
+    };
+
+    g_app_params.rtos_list = (const char **)&rtos_names;
+    g_app_params.rtos_count = sizeof(rtos_names) / sizeof(*rtos_names);
+
+    for (size_t i = 0; i < g_app_params.rtos_count; ++i) {
+        if (!strcmp(g_app_params.rtos_list[i], g_app_params.rtos_type)) {
+            g_app_params.selected_rtos_index = i;
+            break;
+        }
     }
 
-    target_list = storage_get_config_files(CONFIG_FILES_PATH, true, &files_count);
-    return target_list;
-}
+    ui_update_rtos_list(g_app_params.selected_rtos_index);
 
-esp_err_t storage_get_target_path(const char *target_name, char **path)
-{
-    char *prelim = TARGET_PATH_PRELIM;
-    char *file_param = (char *)calloc(strlen(prelim) + strlen(target_name) + 1, sizeof(char));
-    if (!file_param) {
-        ESP_LOGE(TAG, "Allocation error");
-        return ESP_FAIL;
-    }
-    strcpy(file_param, prelim);
-    strcpy(file_param + strlen(prelim), target_name);
-    *path = file_param;
     return ESP_OK;
 }

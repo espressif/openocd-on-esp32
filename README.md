@@ -1,31 +1,49 @@
-# OpenOCD application for ESP32S3
+# OpenOCD application for ESP32-S3
+
+This repository contains a port of OpenOCD which runs on an ESP32-S3. It allows using an ESP32-S3 board as a stand-alone debugger for other chips, which exposes a GDB server port over Wi-Fi or Ethernet.
+
+The repository also demonstrates how a complex application (such as OpenOCD) can be ported to ESP-IDF.
 
 ## Prerequisites
 
-- ESP32S3 board with PSRAM. This board will act as a debugger. Make sure to adjust Flash and PSRAM spi modes (DIO, QIO, OPI) from the menuconfig.
-- ESP32 target board, flashed e.g. with blink example.
-- Connect GPIOs to the debugger board to the target board:
+- This application can run on ESP32 and ESP32-S3 boards which will function as a debugger.
+- PSRAM is necessary for both boards.
+- We recommend using ESP32-S3 for improved performance.
+- Make sure to adjust Flash and PSRAM spi modes (DIO, QIO, OPI) from the menuconfig.
+- ESP32 target board should be flashed e.g. with blink example.
+- Connect GPIOs from the debugger board to the target board using JTAG interface.
 
   |Master pin | Function | Slave pin |
   |-----------|----------|-----------|
-  | 13        | TCK      | 13        |
-  | 14        | TMS      | 14        |
-  | 12        | TDI      | 12        |
-  | 11        | TDO      | 15        |
+  | 38        | TCK      | 13        |
+  | 39        | TMS      | 14        |
+  | 40        | TDI      | 12        |
+  | 41        | TDO      | 15        |
 
-If necessary, the master pins can be adjusted at run time using `esp32_gpio_jtag_nums <tck> <tms> <tdi> <tdo>` OpenOCD command. For example,
+If necessary, the master pins can be adjusted at run time using `esp_gpio_jtag_nums <tck> <tms> <tdi> <tdo>` OpenOCD command. For example,
 
-    esp32_gpio_jtag_nums 13 14 12 11
+    esp_gpio_jtag_nums 38 39 40 41
 
-sets the configuration shown above. The default pins are set in `interface/esp32_gpio.cfg` file (in the OpenOCD submodule).
+sets the configuration shown above. The default pins are set in `interface/esp_gpio_jtag.cfg` file (in the OpenOCD submodule).
 
 - Connect a led to see the JTAG tx/rx activity (optional)
 
-  If a led is connected to one of the GPIO pins, it can be activated with  `esp32_gpio_blink_num <led_pin_num>` OpenOCD command inside `interface/esp32_gpio.cfg`
+  If a led is connected to one of the GPIO pins, it can be activated with  `esp_gpio_blink_num <led_pin_num>` OpenOCD command inside `interface/esp_gpio_jtag.cfg`
+
+SWD interface is also supported. The target board can be connected from the SWD pins using `interface/esp_gpio_swd.cfg`
+
+|Master pin | Slave Pin Function |
+|-----------|--------------------|
+| 38        |       SWCLK        |
+| 39        |       SWDIO        |
+
+## Supported IDF versions
+
+All components are expected to be usable with IDF 5.0 or later versions.
 
 ## Build and flash
 
-1. Get the submodules: `git submodule --update --init --recursive`.
+1. Get the submodules: `git submodule update --init --recursive`.
 
 2. Configure Wi-Fi SSID and password in menuconfig.
 
@@ -43,12 +61,12 @@ With the help of OpenOCD, it is also possible to load application from the jtag.
 
 ## Run
 
-Open the monitor and check that the ESP32S3 output ends with the following:
+Open the monitor and check that the ESP32-S3 output ends with the following:
 
 ```
 I (6393) example_common: - IPv4 address: 192.168.32.56,
 I (6393) example_common: - IPv6 address: fe80:0000:0000:0000:7edf:a1ff:fee0:104c, type: ESP_IP6_ADDR_IS_LINK_LOCAL
-Open On-Chip Debugger 0.11.0 (2022-11-09-16:08)
+Open On-Chip Debugger 0.12.0 (2023-06-07-21:57)
 Licensed under GNU GPL v2
 For bug reports, read
         http://openocd.org/doc/doxygen/bugs.html
@@ -56,10 +74,10 @@ debug_level: 2
 
 Warn : Could not determine executable path, using configured BINDIR.
 Info : only one transport option; autoselect 'jtag'
-esp32_gpio GPIO config: tck = 13, tms = 14, tdi = 12, tdo = 11
+esp_gpio GPIO config: tck = 38, tms = 39, tdi = 40, tdo = 41
 
 Warn : Transport "jtag" was already selected
-Info : esp32_gpio GPIO JTAG bitbang driver
+Info : esp_gpio GPIO JTAG/SWD bitbang driver
 Info : clock speed 1000 kHz
 Info : JTAG tap: esp32.cpu0 tap/device found: 0x120034e5 (mfg: 0x272 (Tensilica), part: 0x2003, ver: 0x1)
 Info : JTAG tap: esp32.cpu1 tap/device found: 0x120034e5 (mfg: 0x272 (Tensilica), part: 0x2003, ver: 0x1)
@@ -105,13 +123,35 @@ Run GDB and instruct it to connect to the debugger over TCP:
 
 ## Web server connection
 
-In the first run, ESP32-OOCD runs as an access point (ap mode) with default ssid `ESP32-OOCD` and default password `esp32pass`. You can access the web server by typing the IP address `192.168.4.1` on a browser. Then, you will see the configuration menu to instantly change wifi settings and OpenOCD command line arguments.
-The last saved Wi-Fi and OpenOCD configuration will be used in every reset. Wifi mode will be switched to the `station` after the default password is changed. If there will be a connection issue after some retrying ESP32-OOCD will return to the wifi factory setting.
+On the first run, the application creates an access point with default SSID `esp-openocd` without password. You can access the web server by connecting to this network and typing the IP address `192.168.4.1` in a browser. Then, you will see the configuration menu to instantly change Wi-Fi settings and OpenOCD command line arguments.
+
+## ESP-BOX
+
+OpenOCD application has been ported to work on the ESP-BOX development board, with configuration screen and a provisioning feature.
+By default, the ESP-BOX and UI functionality are disabled but can be enabled from the menuconfig.
 
 ## OpenOCD configuration
 
-For the OpenOCD configuration, there are three parameters, which are --file/-f, --command/-c and --debug/-d. If we detail them:
+The settings for OpenOCD can be configured either through the web page or the touch screen on the ESP-BOX. By default, only the configurations for Espressif chips are preloaded into the file system. However, it is also possible to use other chip configuration files by directly uploading them from the web page.
 
-- `--file/-f` expects only connected target config file name, e.g. `target/esp32s2.cfg`. The default value of this parameter is "target/esp32.cfg" and it cannot be empty in the OpenOCD configuration. The interface config file is set to statically `interface/esp32_gpio.cfg`
-- `--command/-c` takes command arguments. e.g. `init; reset halt`
-- `--debug/-d` takes debug verbosity value e.g. `3`
+## License
+
+The code in this repository is Copyright (c) 2022-2023 Espressif Systems (Shanghai) Co. Ltd., and licensed under Apache 2.0 license, available in [LICENSE](LICENSE) file.
+
+OpenOCD source code added as a submodule is licensed under GPL v2.0 or later license.
+
+## Contributing
+
+We welcome contributions to this project in the form of bug reports, feature requests and pull requests.
+
+Issue reports and feature requests can be submitted using Github Issues: https://github.com/espressif/openocd-on-esp32/issues. Please check if the issue has already been reported before opening a new one.
+
+Contributions in the form of pull requests should follow ESP-IDF project's [contribution guidelines](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/contribute/index.html).
+
+## Pre-commit hooks
+
+OpenOCD-on-ESP32 project uses [pre-commit hooks](https://pre-commit.com/) to perform code formatting and other checks when you run `git commit`.
+
+To install pre-commit hooks, run `pip install pre-commit && pre-commit install`.
+
+If a pre-commit hook has modified any of the files when you run `git commit`, add these changes using `git add` and run `git commit` again.

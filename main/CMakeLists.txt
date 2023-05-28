@@ -1,11 +1,15 @@
 set(sources
     main.c
     storage.c
-    networking.c
-    web_server.c
-    ui/ui_events.c
-    ui/ui.c
+    network/network.c
+    network/network_adapter.c
+    network/network_mngr.c
+    network/web_server.c
 )
+
+if(CONFIG_UI_ENABLE)
+    list(APPEND sources ui.c ui_events.c)
+endif()
 
 set(dependencies
     fatfs
@@ -29,10 +33,13 @@ idf_component_register(
     SRCS
         ${sources}
     INCLUDE_DIRS
-        "."
+        . network
     PRIV_REQUIRES
         ${dependencies}
-    EMBED_FILES "web_page.html"
+    EMBED_FILES
+        "web/website.html"
+        "web/esp_logo.svg"
+        "web/favicon.ico"
 )
 
 set(host "esp-idf")
@@ -41,7 +48,7 @@ set(JIMTCL_DIR ${CMAKE_SOURCE_DIR}/components/jimtcl/jimtcl)
 set(PLATFORM_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/components/platform_include)
 
 include(${OPENOCD_DIR}/cmake/OpenOCDSetup.cmake)
-include(${OPENOCD_DIR}/cmake/configure-esp32.cmake)
+include(${OPENOCD_DIR}/cmake/configure-esp-idf.cmake)
 
 add_library(openocd INTERFACE)
 
