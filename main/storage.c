@@ -39,13 +39,13 @@ esp_err_t storage_init_filesystem(void)
         return ret;
     }
 
-    size_t total = 0, used = 0;
+    uint64_t total = 0, used = 0;
     ret = esp_vfs_fat_info("/data", &total, &used);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get FATFS partition information (%s)", esp_err_to_name(ret));
         return ret;
     } else {
-        ESP_LOGI(TAG, "Partition size: total: %d, used: %d", total, used);
+        ESP_LOGI(TAG, "Partition size: total: %" PRId64 ", used: %" PRId64, total, used);
     }
     return ESP_OK;
 }
@@ -130,7 +130,7 @@ esp_err_t storage_erase_key(const char *key)
 
     esp_err = nvs_erase_key(my_handle, key);
     if (esp_err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to erase (%s)", key, esp_err_to_name(esp_err));
+        ESP_LOGE(TAG, "Failed to erase (%s)-(%s)", key, esp_err_to_name(esp_err));
     }
 
     nvs_commit(my_handle);
