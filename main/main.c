@@ -91,7 +91,7 @@ void run_openocd(void)
     char command[128] = {0};
     if (is_espressif_target(g_app_params.config_file)) {
         argv[argc++] = "-c";
-        sprintf(command, "set ESP_FLASH_SIZE %s; set ESP_RTOS %s; set ESP32_ONLYCPU %c",
+        sprintf(command, "set ESP_FLASH_SIZE %s; set ESP_RTOS %s; set ESP_ONLYCPU %c",
                 g_app_params.flash_size, g_app_params.rtos_type, g_app_params.dual_core);
         argv[argc++] = command;
     }
@@ -165,7 +165,7 @@ void load_openocd_params(void)
 
     err = storage_read(OOCD_DUAL_CORE_KEY, &g_app_params.dual_core, 1);
     if (err != ESP_OK) {
-        g_app_params.dual_core = CONFIG_ESP32_ONLYCPU + '0';
+        g_app_params.dual_core = CONFIG_ESP_ONLYCPU + '0';
     }
     if (g_app_params.dual_core == '1') {
         ui_update_dual_core_checkbox(false);

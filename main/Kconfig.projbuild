@@ -149,7 +149,7 @@ menu "OpenOCD-on-ESP32 Configuration"
         default y
         depends on OPENOCD_TARGET_ESP32 || OPENOCD_TARGET_ESP32S3
 
-    config ESP32_ONLYCPU
+    config ESP_ONLYCPU
         int
         default 3 if OPENOCD_SMP_TARGET
         default 1
