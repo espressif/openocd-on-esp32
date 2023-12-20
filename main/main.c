@@ -1,12 +1,14 @@
 #include "sdkconfig.h"
 
+#include <unistd.h>
+
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "nvs_flash.h"
 #include "esp_check.h"
-#include "esp_vfs_dev.h"
+#include "driver/uart_vfs.h"
 #include "driver/uart.h"
 
 #include "types.h"
@@ -29,8 +31,8 @@ static void init_console(void)
     /* Disable buffering on stdin */
     setvbuf(stdin, NULL, _IONBF, 0);
     /* Configure line endings */
-    esp_vfs_dev_uart_port_set_rx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_LF);
-    esp_vfs_dev_uart_port_set_tx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_CRLF);
+    uart_vfs_dev_port_set_rx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_LF);
+    uart_vfs_dev_port_set_tx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_CRLF);
 
     /* Configure UART. Note that REF_TICK is used so that the baud rate remains
      * correct while APB frequency is changing in light sleep mode.
@@ -51,7 +53,7 @@ static void init_console(void)
     ESP_ERROR_CHECK(uart_param_config(CONFIG_ESP_CONSOLE_UART_NUM, &uart_config));
 
     /* Tell VFS to use UART driver */
-    esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
+    uart_vfs_dev_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
 }
 
 static bool is_espressif_target(const char *cfg_file)
