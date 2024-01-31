@@ -8,7 +8,6 @@
 #include "esp_netif.h"
 #include "nvs_flash.h"
 #include "esp_check.h"
-#include "driver/uart_vfs.h"
 #include "driver/uart.h"
 
 #include "types.h"
@@ -17,6 +16,18 @@
 #include "web_server.h"
 #include "ui.h"
 #include "openocd.h"
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+#include "driver/uart_vfs.h"
+#define vfs_dev_port_set_rx_line_endings uart_vfs_dev_port_set_rx_line_endings
+#define vfs_dev_port_set_tx_line_endings uart_vfs_dev_port_set_tx_line_endings
+#define vfs_dev_uart_use_driver uart_vfs_dev_use_driver
+#else
+#include "esp_vfs_dev.h"
+#define vfs_dev_port_set_rx_line_endings esp_vfs_dev_uart_port_set_rx_line_endings
+#define vfs_dev_port_set_tx_line_endings esp_vfs_dev_uart_port_set_tx_line_endings
+#define vfs_dev_uart_use_driver esp_vfs_dev_uart_use_driver
+#endif
 
 static const char *TAG = "main";
 
@@ -31,8 +42,8 @@ static void init_console(void)
     /* Disable buffering on stdin */
     setvbuf(stdin, NULL, _IONBF, 0);
     /* Configure line endings */
-    uart_vfs_dev_port_set_rx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_LF);
-    uart_vfs_dev_port_set_tx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_CRLF);
+    vfs_dev_port_set_rx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_LF);
+    vfs_dev_port_set_tx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_CRLF);
 
     /* Configure UART. Note that REF_TICK is used so that the baud rate remains
      * correct while APB frequency is changing in light sleep mode.
@@ -53,7 +64,7 @@ static void init_console(void)
     ESP_ERROR_CHECK(uart_param_config(CONFIG_ESP_CONSOLE_UART_NUM, &uart_config));
 
     /* Tell VFS to use UART driver */
-    uart_vfs_dev_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
+    vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
 }
 
 static bool is_espressif_target(const char *cfg_file)
