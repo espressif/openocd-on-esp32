@@ -124,7 +124,7 @@ esp_err_t set_openocd_config_handler(httpd_req_t *req)
 
     // Print the values
     ESP_LOGI(TAG, "Target: %s", target->valuestring);
-    ESP_LOGI(TAG, "Interface: %s", interface->valueint == 0 ? "jtag" : "swd");
+    ESP_LOGI(TAG, "Interface: %s", interface->valuestring[0] == '0' ? "jtag" : "swd");
     ESP_LOGI(TAG, "RTOS: %s", rtos->valuestring);
     ESP_LOGI(TAG, "Debug: %s", debug->valuestring);
     ESP_LOGI(TAG, "Dual Core: %s", dualCore->type == cJSON_True ? "true" : "false");
@@ -134,7 +134,7 @@ esp_err_t set_openocd_config_handler(httpd_req_t *req)
     storage_write(OOCD_CFG_FILE_KEY, target->valuestring, strlen(target->valuestring));
     storage_write(OOCD_CMD_LINE_ARGS_KEY, cParam->valuestring, strlen(cParam->valuestring));
     storage_write(OOCD_RTOS_TYPE_KEY, rtos->valuestring, strlen(rtos->valuestring));
-    storage_write(OOCD_INTERFACE_KEY, (const char *)&interface->valueint, 1);
+    storage_write(OOCD_INTERFACE_KEY, interface->valuestring, 1);
     storage_write(OOCD_DBG_LEVEL_KEY, debug->valuestring, 1);
 
     if (dualCore->type == cJSON_True) {

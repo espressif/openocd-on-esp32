@@ -94,7 +94,7 @@ void run_openocd(void)
     int argc = 3;
 
     char iface[32] = {0};
-    sprintf(iface, "interface/esp_gpio_%s.cfg", g_app_params.interface == 0 ? "jtag" : "swd");
+    sprintf(iface, "interface/esp_gpio_%s.cfg", g_app_params.interface == '0' ? "jtag" : "swd");
     argv[argc++] = "-f";
     argv[argc++] = iface;
 
@@ -139,9 +139,9 @@ void load_openocd_params(void)
 
     err = storage_read(OOCD_INTERFACE_KEY, &g_app_params.interface, 1);
     if (err != ESP_OK) {
-        g_app_params.interface = CONFIG_OPENOCD_INTERFACE;
+        g_app_params.interface = CONFIG_OPENOCD_INTERFACE + '0';
     }
-    ui_update_interface_dropdown(g_app_params.interface);
+    ui_update_interface_dropdown(g_app_params.interface - '0');
 
     read_param = NULL;
     err = storage_alloc_and_read(OOCD_RTOS_TYPE_KEY, &read_param);
@@ -196,7 +196,7 @@ void load_openocd_params(void)
     ESP_LOGI(TAG, "rtos type (%s)", g_app_params.rtos_type);
     ESP_LOGI(TAG, "flash size (%s)", g_app_params.flash_size);
     ESP_LOGI(TAG, "dual core (%c)", g_app_params.dual_core);
-    ESP_LOGI(TAG, "interface (%s)", g_app_params.interface == 0 ? "jtag" : "swd");
+    ESP_LOGI(TAG, "interface (%s)", g_app_params.interface == '0' ? "jtag" : "swd");
     ESP_LOGI(TAG, "command arg (%s)", g_app_params.command_arg);
     ESP_LOGI(TAG, "debug_level (%c)", g_app_params.debug_level);
 }

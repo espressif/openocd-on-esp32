@@ -68,7 +68,8 @@ void ui_event_run_button(lv_event_t *e)
         /* save Interface type */
         selected_index = lv_dropdown_get_selected(g_ui_interface_dropdown);
         ESP_LOGI(TAG, "save selected interface: %s", selected_index == 0 ? "jtag" : "swd");
-        storage_write(OOCD_INTERFACE_KEY,  (const char *)&selected_index, 1);
+        char interface = selected_index + '0';
+        storage_write(OOCD_INTERFACE_KEY,  &interface, 1);
 
         /* save Flash Support */
         const char *flash_size = lv_obj_get_state(g_ui_flash_checkbox) & LV_STATE_CHECKED ? "auto" : "0";
