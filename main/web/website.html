@@ -469,7 +469,7 @@
       function sendOpenocdConfig() {
         // Get the form inputs
         var target = document.getElementById("config").value;
-        var interface = document.getElementById("interface").value;
+        var interface = parseInt(document.getElementById("interface").value);
         var rtos = document.getElementById("rtos").value;
         var debug = document.getElementById("debug").value;
         var dualCore = document.getElementById("dual-core").checked;
