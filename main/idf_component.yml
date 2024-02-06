@@ -2,11 +2,10 @@ targets:
   - esp32
   - esp32s3
 dependencies:
-  espressif/esp_lvgl_port: "^1.1.0"
-  espressif/esp_wrover_kit:
-    version: "^1.3.2"
+  espressif/esp_lvgl_port:
+    version: "1.4.0"
     rules:
-      - if: "target in [esp32]"
+    - if: "target in [esp32s3]"
   espressif/esp-box:
     version: "^2.2.0"
     rules:

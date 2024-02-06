@@ -169,6 +169,7 @@ menu "OpenOCD-on-ESP32 Configuration"
 
     config UI_ENABLE
         bool "Run on ESP-BOX"
+        depends on IDF_TARGET_ESP32S3
         default n
 
     config ESP_WIFI_SSID
