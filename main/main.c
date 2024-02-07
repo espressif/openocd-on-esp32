@@ -121,6 +121,9 @@ void run_openocd(void)
     sprintf(debug_level, "-d%c", g_app_params.debug_level);
     argv[argc++] = debug_level;
 
+    // suppress gpio init logs
+    esp_log_level_set("gpio", ESP_LOG_WARN);
+
     int ret = openocd_main(argc, (char **)argv);
 
     ESP_LOGI(TAG, "OpenOCD should not return! ret(%d)", ret);
