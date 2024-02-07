@@ -1,14 +1,9 @@
 targets:
-  - esp32
   - esp32s3
 dependencies:
   espressif/esp_lvgl_port:
     version: "1.4.0"
-    rules:
-    - if: "target in [esp32s3]"
   espressif/esp-box:
     version: "^2.2.0"
-    rules:
-      - if: "target in [esp32s3]"
   idf:
     version: ">=5.0.0"

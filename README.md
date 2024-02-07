@@ -6,11 +6,10 @@ The repository also demonstrates how a complex application (such as OpenOCD) can
 
 ## Prerequisites
 
-- This application can run on ESP32 and ESP32-S3 boards which will function as a debugger.
-- PSRAM is necessary for both boards.
-- We recommend using ESP32-S3 for improved performance.
+- This application only can run on ESP32-S3 boards which will function as a debugger. ESP32 is not supported due to the limited memory.
+- PSRAM is necessary for the ESP32-S3 boards.
 - Make sure to adjust Flash and PSRAM spi modes (DIO, QIO, OPI) from the menuconfig.
-- ESP32 target board should be flashed e.g. with blink example.
+- Target board should be flashed with an application.
 - Connect GPIOs from the debugger board to the target board using JTAG interface.
 
   |Master pin | Function | Slave pin |
