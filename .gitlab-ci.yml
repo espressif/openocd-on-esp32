@@ -70,9 +70,21 @@ build_v50:
 
 pre_commit:
   stage: pre_check
-  image: espressif/idf:$ESP_IDF_TAG_LATEST
+  image: python:3.11-alpine3.18
+  before_script:
+    - apk add git
+    - pip install pre-commit
+  script:
+    - echo "Merge request is from ${CI_COMMIT_REF_NAME} into ${CI_MERGE_REQUEST_TARGET_BRANCH_NAME}"
+    - git fetch origin ${CI_MERGE_REQUEST_TARGET_BRANCH_NAME} ${CI_COMMIT_REF_NAME}
+    - export from_sha=$(git merge-base HEAD origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME})
+    - echo "Checking changes from ${from_sha} to ${CI_COMMIT_SHA}:"
+    - git log --oneline ${from_sha}..${CI_COMMIT_SHA}
+    - echo "Modified files:"
+    - git diff-tree --no-commit-id --name-only -r ${from_sha} ${CI_COMMIT_SHA}
+    - echo "Running pre-commit:"
+    - pre-commit run --from ${from_sha} --to ${CI_COMMIT_SHA}
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
   tags:
     - build
-  script:
-    - pip install pre-commit
-    - git diff-tree --no-commit-id --name-only -r $CI_MERGE_REQUEST_TARGET_BRANCH_NAME -r $CI_COMMIT_SHA | xargs pre-commit run --files
